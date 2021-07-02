@@ -107,7 +107,22 @@ The overarching objective of air navigation is the "safe, efficient, and orderly
 
 -   time vs distance flown
 
--   
+-
+
+## Data
+
+This study uses data from Opensky Network.
+The project downloaded the associated flight tables for 3 major airports in Europe and 2 months.
+With a view to the sharp decline in air traffic in March 2020 and an initial recovery in May, we chose these 2 months in 2019, 2020, and 2021.
+This provides characteristics and comparable months and supports the idea of taking snapshots pre-COVID, during the traffic decline, and a year after this initial disruption.
+
+The study data accounted for xx GB
+
+<!-- add table airport - month - file size -->
+
+During an initial data validation step the downloaded data was compared to the monthly performance data collected from European airports by the Performance Review Unit of EUROCONTROL.
+
+ADD COMPARISON WITH APDF AND LEVEL OF OVERLAP
 
 # Results
 
