@@ -19,13 +19,20 @@ affiliation:
       author:
         - name: Rainer Koelle
           email: rainer.koelle@eurocontrol.int
-    - name: cooperation university/organisation
-      department: tbd ... 
-      location: tbd location
-      #mark: 2
+    - name: EUROCONTROL
+      department: Performance Review Unit
+      location: Brussels (Belgium)
+      #mark: 1
       author:
-        - name: name of 2nd author
-          email: second_author@somedomain.com
+        - name: Enrico Spinielli
+          email: rainer.koelle@eurocontrol.int
+    - name: EUROCONTROL
+      department: Performance Review Unit
+      location: Brussels (Belgium)
+      #mark: 1
+      author:
+        - name: Sam Peeters
+          email: sam.peeters@eurocontrol.int
 abstract: |
   Here goes the abstract of the paper. 
   <!-- motivation -->
