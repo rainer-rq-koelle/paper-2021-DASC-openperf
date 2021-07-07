@@ -1,0 +1,567 @@
+---
+title: "Data Preparation"
+author: "PRU"
+date: "02/07/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(arrow)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(geosphere)
+library(ggplot2)
+library(patchwork)
+
+# apdf read util functions
+source("./R/construct_apt_fn.R")
+source("./R/read_csv12.R")
+```
+
+## Validation Data Set from APDF
+
+Data preparatory step: 
+
+* reading in APDF data downloaded from PRISME
+* trimming data set to data points needed for this study
+* writing out March-May for 2019, 2020, and 2021 for EGLL, LFPG, and EHAM
+
+Following write out, chunk/extracting deactivated with eval=FALSE.
+
+```{r apdfval, eval=FALSE}
+#' read apdf data extracted from PRISME, subset for required columns
+#'
+read_apdf <- function(.apt, .yr){
+  # my filename
+  fn <- construct_apt_fn(.apt, .yr)
+  # read only needed columns
+  colspec <- cols_only(
+     AP_C_FLTID = col_character()
+    ,AP_C_REG   = col_character()
+    ,ADEP_ICAO  = col_character(), ADES_ICAO = col_character()
+    ,MVT_TIME_UTC = col_character()   # could not get col_datetime() going
+    ,ARCTYP     = col_character()  
+    ,AC_CLASS   = col_character()
+    ,AP_C_RWY   = col_character()
+    ,C40_CROSS_TIME = col_character()
+    ,C40_CROSS_LAT = col_double() , C40_CROSS_LON = col_double()
+    ,C40_CROSS_FL = col_integer(), C40_BEARING = col_double()
+    ,C100_CROSS_TIME = col_character()
+    ,C100_CROSS_LAT = col_double() , C100_CROSS_LON = col_double()
+    ,C100_CROSS_FL = col_integer(), C100_BEARING = col_double()
+    ,SRC_PHASE  = col_character()
+  )
+  # read and make nicer names
+  df <- read_csv12(fn, colspec) %>% 
+    rename( FLTID = AP_C_FLTID, REG = AP_C_REG
+           , ADEP = ADEP_ICAO, ADES = ADES_ICAO
+           , MVT_TIME = MVT_TIME_UTC, TYPE = ARCTYP
+           , WTC = AC_CLASS, RWY = AP_C_RWY
+           , C40_BRG = C40_BEARING, C100_BRG = C100_BEARING) %>%
+    mutate(across(contains("TIME"), lubridate::dmy_hms))  # coerce timestamps
+  return(df)
+}
+
+#' from given data set extract study months, i.e. March (,April), and May .
+extract_study_month <- function(.df, .months = c(3:5)){
+  df <- .df %>%
+    mutate(MOF = case_when(
+      !is.na(MVT_TIME) ~ lubridate::month(MVT_TIME)
+      ,is.na(MVT_TIME) & !is.na(C40_CROSS_TIME) ~ lubridate::month(C40_CROSS_TIME)
+      ,is.na(MVT_TIME) & is.na(C40_CROSS_TIME) & !is.na(C100_CROSS_TIME) ~ lubridate::month(C100_CROSS_TIME)
+      ,TRUE ~ as.double(NA)
+    )) %>% 
+    filter(MOF %in% .months) %>%
+    select(-MOF)
+}
+
+extract_and_save_apdf_valdata <- function(.apt, .yr){
+  df <- read_apdf(.apt, .yr) %>%
+    extract_study_month()
+  write_csv(df, file = paste0("./data/val-apdf-", .apt, "-", .yr,".csv.gz"))
+}
+
+# testing (apdf <- read_apdf("EGLL", 2019) %>% extract_study_month())
+apts <- c("EGLL", "EHAM","LFPG")
+yrs  <- c(2019:2021)
+
+expand.grid(apt = apts, year = yrs) %>%
+  purrr::pwalk(.f = ~ extract_and_save_apdf_valdata(..1, ..2))
+```
+
+read in validation data set
+
+```{r}
+fns <- list.files(path = "./data/", pattern = "^val-apdf-", full.names = TRUE)
+
+colspec <- cols(
+  FLTID = col_character(),
+  REG = col_character(),
+  ADEP = col_character(),
+  ADES = col_character(),
+  MVT_TIME = col_datetime(format = ""),
+  TYPE = col_character(),
+  WTC = col_character(),
+  RWY = col_character(),
+  SRC_PHASE = col_character(),
+  C40_CROSS_TIME = col_datetime(format = ""),
+  C40_CROSS_LAT = col_double(),
+  C40_CROSS_LON = col_double(),
+  C40_CROSS_FL = col_double(),
+  C100_CROSS_TIME = col_datetime(format = ""),
+  C100_CROSS_LAT = col_double(),
+  C100_CROSS_LON = col_double(),
+  C100_CROSS_FL = col_double(),
+  C40_BRG = col_double(),
+  C100_BRG = col_double()
+)
+
+# read in and tag (with source airport) validation data
+read_apdf_val <- function(.fn, .colspec){
+    my_apt <- stringr::str_extract(.fn, pattern = "[A-Z]{4}")
+    val_ds <- read_csv(.fn, col_types = .colspec) %>%
+        mutate(APT = my_apt) %>%
+        select(APT, everything())
+    return(val_ds)
+}
+
+apdf <- purrr::map_dfr(.x = fns, .f = ~ read_apdf_val(.x, colspec))
+```
+
+```{r}
+tmp <- apdf %>% 
+  filter(SRC_PHASE == "ARR") %>%
+  mutate( DOF  = lubridate::date(MVT_TIME)
+         ,YEAR = lubridate::year(MVT_TIME)
+         ) %>%
+  group_by(APT, YEAR, DOF) %>%
+  summarise(ARRS = n(), .groups = "drop") %>%
+  na.omit() 
+
+tmp$DOF2 <- tmp$DOF
+lubridate::year(tmp$DOF2) <- 666
+  
+p <- tmp %>%
+  ggplot() +
+  geom_line(aes(x = DOF2, y = ARRS, colour = APT )) +
+  facet_grid(APT ~ YEAR) +
+  theme_minimal() +
+  labs(y = NULL, x = NULL) +
+  theme(legend.position = "none")
+# ggsave("./figures/airport-timeline-2019-2020-2021.png", dpi = 320, height = 6, width = 8)
+p
+```
+
+
+
+
+```{r}
+ds <- read_feather("./data-raw/EGLL_2019-03-01_history.feather") %>% as_tibble()
+glimpse(ds)
+```
+```{r}
+names(ds)
+```
+
+TODO - via icao24 we can get aircraft type
+
+```{r}
+make_standard_names <- function(.df){
+  df <- .df %>%
+    rename( TIME   = timestamp
+           ,ICAO24 = icao24
+           ,FLTID  = callsign
+           ,ADEP   = origin
+           ,ADES   = destination
+           ,LAT    = latitude
+           ,LON    = longitude
+           )
+  return(df)
+}
+ds <- ds %>% make_standard_names()
+```
+
+
+create some meta data
+
+```{r}
+meta <- ds %>% 
+  group_by(FLTID, ICAO24) %>% 
+  summarise(N = n(), ADEP = unique(ADEP), ADES = unique(ADES)
+            ,ENTRY_TIME = min(TIME), END_TIME = max(TIME)
+            ,ELAPSED_TIME = difftime(END_TIME, ENTRY_TIME, units = "mins")
+            ,.groups = "drop")
+
+meta
+```
+
+
+```{r}
+meta %>% 
+  ggplot() + 
+  geom_point(aes(x = N, y = as.numeric(ELAPSED_TIME))) +
+  labs(title = "data points versus elapsed time")
+```
+
+```{r}
+set.seed(666)
+arrs <- meta %>%
+  filter(ADES == "EGLL") %>%
+  slice_sample(n = 10)
+
+ds %>% filter(FLTID %in% arrs$FLTID, ICAO24 %in% arrs$ICAO24) %>%
+ggplot(aes(x = LON, y = LAT, colour = ICAO24)) +
+  geom_point()
+```
+
+```{r}
+ds %>% filter(FLTID %in% arrs$FLTID, ICAO24 %in% arrs$ICAO24) %>%
+ggplot(aes(x = TIME, y = geoaltitude, colour = ICAO24)) +
+  geom_point()
+```
+
+TODO - smooth altitude     
+OBSERVATION - trajectories feel to be cut off at runway or close to ground := no ground data
+
+```{r}
+ds %>% filter(ICAO24 == "3991e4") %>%
+  ggplot(aes(x = LON, y = LAT, colour = FLTID)) +
+  geom_point()
+```
+```{r}
+tmp <- ds %>% 
+  filter(ICAO24 == "3991e4", FLTID == "AFR23GC") %>% 
+  filter(TIME > max(TIME) - 600) 
+
+p1 <- tmp %>% ggplot(aes(x = LON, y = LAT)) + geom_point()
+p2 <- tmp %>% ggplot(aes(x = TIME, y = geoaltitude)) + geom_point()
+
+p1 + p2
+```
+
+runway system 
+lookup rather than calc: https://www.pgc.umn.edu/apps/convert/
+
+Runway 09L/27R
+Dimensions:	12802 x 164 feet / 3902 x 50 meters
+Surface:	Hard
+	Runway 09L	Runway 27R
+Coordinates:	N51°28.65' / W0°29.10'	N51°28.66' / W0°26.00'
+Elevation: 	79 	78
+Runway Heading: 	091° 	271°
+Displaced Threshold: 	1004 Feet 
+
+Runway 09R/27L
+Dimensions:	12008 x 164 feet / 3660 x 50 meters
+Surface:	Unknown
+	Runway 09R	Runway 27L
+Coordinates:	N51°27.89' / W0°28.94'	N51°27.90' / W0°26.04'
+Elevation: 	75 	77
+Runway Heading: 	091° 	271°
+Displaced Threshold: 	1007 Feet
+
+```{r}
+aip<- tribble(
+   ~ICAO , ~REF, ~NAME,          ~TYPE, ~ID,  ~LAT,      ~LON,      ~GEOM_ALT
+  ,"EGLL", "ARP", "Aerodr. Ref", "ARP", "ARP",51.4706,   -0.461941, 83
+  ,"EGLL", "09L", "RWY 09L/27R", "THR", "R1", 51.4775,   -0.485,    79
+  ,"EGLL", "27R", "RWY 09L/27R", "THR", "R1", 51.477667, -0.433333, 78
+  ,"EGLL", "09R", "RWY 09R/27L", "THR", "R2", 51.464833, -0.482333, 75
+  ,"EGLL", "27L", "RWY 09R/27L", "THR", "R2", 51.465,     -0.434,   77
+)
+```
+
+
+TODO ===========================
+
+LFPG
+Latitude 	49.0127983093
+Longitude 	2.54999995232
+Geom. Altitude 	392ft (119m)
+
+EHAM
+Latitude 	52.3086013794
+Longitude 	4.763889789579999
+Geom. Altitude 	-11ft (-3m)
+
+```{r}
+tmp <- ds %>% filter(ADES == "EGLL") %>% 
+  group_by(ICAO24, FLTID) %>% 
+  filter(TIME >= max(TIME) - 30)
+  
+ aip %>% filter(TYPE == "THR") %>%  
+    group_by(ID) %>% 
+    mutate(  LAT2 = lead(LAT), LON2 = lead(LON) ) %>% 
+   na.omit() %>%
+   
+  ggplot() + 
+   geom_segment(aes(x = LON, xend = LON2, y = LAT, yend = LAT2)
+                , colour = "green", size = 5) + 
+   #---------- ARP
+   geom_point( data = aip %>% filter(REF == "ARP")
+              , aes(x = LON, y = LAT), colour = "red", size = 3) + 
+   #---------- last positions
+   geom_point(data = tmp, aes(x = LON, y = LAT)) +
+   #---------- trim
+   xlim(-0.65, -0.35) + ylim(51.455, 51.485)
+```
+
+Note: interesting offset of some arrivals !?!
+
+## define airport box
+
+bboxfinder: 51.461066,-0.506401,51.482666,-0.412846
+
+```{r}
+library(sf)
+egll_box <- st_bbox(c( xmin = -0.506401, xmax = -0.412846
+                      ,ymin = 51.461066, ymax = 51.482666)
+                    ,crs = st_crs(4326)) %>%
+  st_as_sfc()
+```
+
+pick a test trajectory
+
+```{r}
+trj <- ds %>%
+  filter(ICAO24 == "a14bdd", FLTID == "AMX007") %>%
+  filter(TIME >= max(TIME) - 200)
+```
+
+Utility functions to coerce lat/lon to sf points or linestring
+
+```{r}
+cast_latlon_to_pts <- function(.df, .crs = 4326, .drop_coord = TRUE){
+  pts_sf <- .df %>%
+    sf::st_as_sf(coords = c("LON","LAT"), crs = .crs, remove = .drop_coord)
+  return(pts_sf)
+}
+
+cast_pts_to_ls <- function(.pts_sf, .group_var){
+  ls_sf <- .pts_sf %>%
+    group_by({{ .group_var}}) %>%
+    summarise(do_union = FALSE, .groups = "drop") %>%
+    st_cast("LINESTRING")
+  return(ls_sf)
+}
+
+cast_latlon_to_ls <- function(.df, .crs = 4326, .drop_coord = TRUE, ...){
+  pts_sf <- cast_latlon_to_pts(.df, .crs, .drop_coord)
+  ls_sf  <- cast_pts_to_ls(pts_sf, .group_var = NULL)
+}
+```
+
+create a nested data set of flights with the "latest" 4 mins (~ 240 secs)
+
+```{r}
+rq <- ds %>% 
+  select(TIME, ICAO24, FLTID, ADEP, ADES, LAT, LON) %>% 
+  group_by(ICAO24, FLTID, ADEP, ADES) %>% 
+  filter(TIME >= max(TIME - 240)) %>%
+  tidyr::nest()
+```
+
+determine / confirm arrivals := trajectory (linestring) intersects airport box
+
+```{r}
+confirm_flight_phase <- function(.df, .apt_box){
+  df <- .df %>%
+    mutate(ARR = map(
+        .x = data
+       ,.f = ~ cast_latlon_to_ls(.x) %>%
+                    st_intersects(.apt_box, sparse = FALSE))
+    ) %>%
+    unnest(ARR)
+  df <- df %>% mutate(ARR = as.logical(ARR))
+}
+
+rq <- rq %>% confirm_flight_phase(egll_box)
+rq
+```
+
+
+## Identification of landing runway
+
+The identification of the landing direction is based on a simple geospatial heuristic.    
+Conceptually, aircraft are aligned with the runway (centerline) before landing.
+An aircraft is assigned to a landing runway based on the closeness of its pre-landing positions to the extended runway centerline.
+
+```{r}
+trj <- ds %>%
+  filter(ICAO24 == "a14bdd", FLTID == "AMX007") %>% 
+  filter(TIME >= max(TIME) - 300)
+
+trj_pts <- trj %>% cast_latlon_to_pts()
+
+trj %>%
+  ggplot() + 
+  geom_point(aes(x = LON, y = LAT))
+```
+
+extended runway centerlines
+
+```{r}
+rwy_ctr_line <- function(.rwy_df = aip, .ctrl_length = 10000){
+  df <- .rwy_df %>% 
+    filter(REF != "ARP") %>% 
+    select(REF, NAME, LAT, LON) %>% 
+    group_by(NAME) %>% 
+    mutate( LAT2 = case_when(!is.na(lag(LAT))  ~ lag(LAT)
+                            ,!is.na(lead(LAT)) ~ lead(LAT))
+           ,LON2 = case_when(!is.na(lag(LON))  ~ lag(LON)
+                            ,!is.na(lead(LON)) ~ lead(LON))
+          ) %>% 
+  # calculate "reverse" runway bearing with geosphere::bearingRhumb
+  mutate( RBRG  = bearingRhumb(p1 = cbind(LON2, LAT2), p2 = cbind(LON, LAT))
+         )
+  
+  # determine "endpoint" of extended centerline at d = 10000 meters
+  tmp <- with(df, destPointRhumb(cbind(LON, LAT), b= RBRG, d = .ctrl_length)) %>% 
+    as_tibble() %>% rename(LON3 = lon, LAT3 = lat)
+  
+  # combine and return
+  df <- df %>% bind_cols(tmp)
+  return(df)
+}
+
+rwy_ctr_line_pts <- function(.rwy_ctr_line, .debug = FALSE){
+  # could not get pivot_longer work with multiple cols
+  tmp1 <- .rwy_ctr_line %>% select("REF":"LON")
+  
+  # include opposite runway threshold
+  tmp2 <- .rwy_ctr_line %>% select("REF","NAME", "LAT2","LON2") %>%
+    rename(LAT = LAT2, LON = LON2)
+  
+  # centerline end point determined beforehand
+  tmp3 <- .rwy_ctr_line %>% select("REF","NAME", "LAT3","LON3") %>%
+    rename(LAT = LAT3, LON = LON3)
+  
+  if(.debug == TRUE){ 
+    df <- bind_rows(tmp1, tmp2, tmp3)
+  }else{
+    df <- bind_rows(tmp1, tmp3)
+  }
+  
+  df <- df %>% arrange(REF, NAME)
+  return(df)  
+}
+```
+
+showcase rwy centerline(s) and sample arrival
+
+```{r}
+rwy_ctr_line(aip) %>% rwy_ctr_line_pts() %>% 
+  cast_latlon_to_pts() %>% cast_pts_to_ls(REF) %>% 
+  
+  ggplot() + 
+  geom_sf(aes(colour = REF), linetype = "dashed") + 
+  geom_sf(data = trj_pts)
+```
+
+based on centerline we can associate the - estimated - landing runway
+
+As a heuristic we check for points within a certain distance from the extended centerline.    
+To select one of several (potentially crossing, less well spaced) runways the number of hits (close to runway) is determined.
+
+```{r}
+# spatial join (aka "overlay" with "within")
+# to identify most likely ~ closest runway (extended centerline-string)
+estimate_rwy <- function(.trj_pts, .rwy_ctrl_ls, .ctrl_offset = 100){
+  # stop if nots
+tmp <- st_join(.rwy_ctrl_ls, .trj_pts
+               , join = st_is_within_distance, dist = .ctrl_offset) %>%
+  st_drop_geometry() %>%        # keep just the "spatially joined" dataframe
+  na.omit() %>%                 # eliminate no hits
+  group_by(REF) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  mutate( TOT   = sum(N, na.rm = TRUE)       # na.rm should not be necessary
+         ,TRUST = N / TOT)                   # share in case several runways
+  
+return(tmp)
+}
+```
+
+```{r}
+rwy_ctr_line_ls <- aip %>% 
+  rwy_ctr_line() %>% 
+  rwy_ctr_line_pts() %>% 
+  cast_latlon_to_pts() %>% cast_pts_to_ls(REF)
+
+estimate_rwy(trj_pts, rwy_ctr_line_ls)
+```
+
+test for rq data set
+
+```{r}
+rq <- rq %>% filter(ADES == "EGLL") %>%
+  mutate( rwy = map(.x = data, .f = ~estimate_rwy(.x %>% cast_latlon_to_pts() , rwy_ctr_line_ls))
+         ,RWY = map(.x = rwy, .f = ~.x %>% filter(TRUST == max(TRUST)) %>% pull(REF))
+  ) %>% tidyr::unnest(RWY)
+```
+
+TODO - chase mismatches
+with(rq, table(ARR, RWY))
+       RWY
+ARR     27L 27R
+  FALSE   2  11
+  TRUE  343 278
+
+## Determine Actual Landing Time
+
+Random checking of landing time (MVT_TIME, SRC_PHASE == "ARR") from APDF with max(TIME) of ds shows rounding to minute in reporting of EGLL. 
+It appears that the traffic library provides - given ground coverage at Heathrow - landing times - at least for runway direction east, i.e. 27R/L on 1. March.
+
+TODO - check delta over whole data set - this saves quite some time
+
+
+Heuristic: if we need to detect landing and determine landing time
+
+* check coverage on final - for wider out, take characteristic point (e.g. 1000m & 1500m) before threshold, determine groundspeed & apply compression slow down for GPI around 300m inward from threshold
+* ....
+
+
+```{r}
+tmp1 <- apdf %>% 
+  filter(APT == "EGLL", SRC_PHASE == "ARR") %>% 
+  select(FLTID, REG, ADES, MVT_TIME) %>%
+  mutate(BIN = lubridate::floor_date(MVT_TIME, unit = "15 minute")) %>%
+  group_by(BIN) %>% 
+  summarise(N = n()) %>%
+  mutate(SRC = "APDF")
+
+tmp2 <- ds %>%
+  filter(ADES == "EGLL") %>%
+  select(FLTID, ICAO24, TIME) %>%
+  group_by(FLTID, ICAO24) %>%
+  filter(TIME == max(TIME)) %>%
+  mutate(BIN = lubridate::floor_date(TIME, unit = "15 minute")) %>%
+  group_by(BIN) %>% 
+  summarise(N = n()) %>%
+  mutate(SRC = "OSN")
+
+tmp1 %>%
+  filter(BIN %in% tmp2$BIN) %>%
+  bind_rows(tmp2) %>%
+  ggplot() +
+  geom_step(aes(x = BIN, y = N, colour = SRC)) +
+#  facet_wrap(.~ SRC) +
+  NULL
+```
+
+
+
+
+
+what do I need per (arrival) trajectory?
+
+- landing runway
+- actual landing time
+- asma points
+  - 40NM crossing time, crossing lat/lon & bearing
+  - 100NM crossing time, lat/long & bearing
+- associated time to fly
+- associated distance to fly

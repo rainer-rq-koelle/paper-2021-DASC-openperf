@@ -45,7 +45,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 <!-- 2. Background of previous work - High-level background/driver of work. -->
 
-The COVID19 pandemic shifted the focus and attention of political decision-makers and strategic planers over the past year. The unprecedented decline of regional and international air traffic poses challenges in terms of funding in terms of air traffic management modernization. While it is unclear how today's travel constraints and the vaccine roll-out will play, both airspace users and air traffic service providers are committed to "build back better". This will include a higher emphasis on operational excellence. Higher levels of operational efficiency are considered to be enablers for reduced queueing, both in the airspace and on the ground, and lower associated fuel burn and emissions. It will be essential to ensure that with increasing traffic levels, inefficiencies are immediately tracked and remedied.
+The COVID19 pandemic shifted the focus and attention of political decision-makers and strategic planers over the past year. The unprecedented decline of regional and international air traffic poses challenges in terms of funding in terms of air traffic management modernization. While it is unclear how today's travel constraints and the vaccine roll-out will play out, both airspace users and air traffic service providers are committed to "build back better". This will include a higher emphasis on operational excellence. Higher levels of operational efficiency are considered to be enablers for reduced queueing, both in the airspace and on the ground, and lower associated fuel burn and emissions. It will be essential to ensure that with increasing traffic levels, inefficiencies are immediately tracked and remedied.
 
 <!-- 3. Purpose and significance of the paper.   -->
 
@@ -71,7 +71,7 @@ The contribution of this paper are as follows:
 
 On March 11, 2020, the World Health Organisation has declared the novel coronavirus (COVID19) outbreak a global pandemic. Communicable disease control resulted in massive restrictions on international and regional air traffic and passenger travel. The unprecedented decline in air traffic demand resulted in severe financial strains on the air transport industry. The financial support or lack thereof for airlines and airports has been widely covered in the media. A variety of studies showed the interplay or consequences of the travel constraints. To date, lower attention was given to the inherent change in terms of air transport services.
 
--   TODO - add figure of traffic decline and/or COVID19 surge
+-   TODO - add figure of traffic decline and/or COVID19 surge (--\> OSN data set)
 
 ## Crowd-Sourced Open Data
 
@@ -89,14 +89,6 @@ A recent paper [@strohmeier_crowdsourced_2021] highlights the role of open data 
 
     -   which indicators to use & limitations (snapshot measurement on timestamps)
 
-## Analytical Approach and Data Requirements
-
--   describe trajectory basics, dedicated timestamps, and identification problems (e.g. runway)
-
--   develop analytical workflow/algorithm (cleaning & filtering \>\> segmentation \>\> rwy id \>\> ...)
-
-    -   cross-reference to "grammar" of trajectory [@olive_traffic_2019]
-
 ## Measuring Arrival Flow
 
 -   intro:
@@ -107,7 +99,35 @@ The overarching objective of air navigation is the "safe, efficient, and orderly
 
 -   time vs distance flown
 
--   
+## Analytical Approach and Data Requirements
+
+-   describe trajectory basics, dedicated timestamps, and identification problems (e.g. runway)
+
+-   develop analytical workflow/algorithm (cleaning & filtering \>\> segmentation \>\> rwy id \>\> ...)
+
+    -   cross-reference to "grammar" of trajectory [@olive_traffic_2019]
+
+## Study Data
+
+This study builds on data collected by Opensky Network (<https://opensky-network.org/>). The Opensky Network community operates a sensor network of more than 3000 receivers across the globe [@strohmeier_crowdsourced_2021]. The crowdsourced data collected by Opensky Network is available to research, non-profit and government organisations. To support the on-going efforts with a view to COVID-19, the network provides a preprocessed data set of flight data. This data can be downloaded from CERN's Zenodo repository: <https://doi.org/10.5281/zenodo.3737101> [@xavier_olive_2021_4893103]. It provides global flight data covering January 2019 through today. This data set is used in XXX and supports the analysis of air traffic development pre-COVID-19, during COVID, and the current recovery.
+
+FIG X is build from this flight dataset. XXXXXXXXXXXXXXX
+
+For this study the lower level trajectory data is used. The data was downloaded from Opensky Network making use of the *traffic library* [@olive_traffic_2019]. The library supports the targeted extraction of trajectories landing and departing from the chosen airports. The respective trajectory data for March and May 2019, 2020, and 2021 was downloaded.
+
+TODO - ADD TABLE WITH data size for MAR/MAY 2019, 2020, and 2020
+
+The validity of the data was checked by comparing the extracted data with the airport operator flow (APDF) of EUROCONTROL's Performance Review Unit. The APDF data [ref to data specs] is collected monthly in accordance with the associated data specification. The data is used for the regular performance monitoring under the EUROCONTROL Performance Review System and the European Sky Performance Scheme.
+
+TODO - comparison of APDF with OSN data - number of flights / any specifics.
+
+(ref:apdf-timeline)APDF timeline for arrivals at the study airport
+
+```{r apdf-timeline, fig.cap="(ref:apdf-timeline)"}
+knitr::include_graphics("./figures/airport-timeline-2019-2020-2021.png")
+```
+
+Figure \@ref(fig:apdf-timeline) shows SOMETHING ...
 
 # Results
 
