@@ -207,6 +207,10 @@ meta %>%
   labs(title = "data points versus elapsed time")
 ```
 
+>TODO: function to extract trajectory payload (or use {sftrack/traj})
+> force ordering: group_by(callsign, icao24) %>%
+    arrange(time, .by_group = T)
+
 ```{r}
 set.seed(666)
 arrs <- meta %>%
