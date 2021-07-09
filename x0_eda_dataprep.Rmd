@@ -210,6 +210,7 @@ meta %>%
 ```{r}
 set.seed(666)
 arrs <- meta %>%
+  mutate(ID = paste0(FLTID, ICAO24)) %>%
   filter(ADES == "EGLL") %>%
   slice_sample(n = 10)
 
@@ -515,7 +516,7 @@ ARR     27L 27R
 Random checking of landing time (MVT_TIME, SRC_PHASE == "ARR") from APDF with max(TIME) of ds shows rounding to minute in reporting of EGLL. 
 It appears that the traffic library provides - given ground coverage at Heathrow - landing times - at least for runway direction east, i.e. 27R/L on 1. March.
 
-TODO - check delta over whole data set - this saves quite some time
+> TODO - check delta over whole data set - this saves quite some time
 
 
 Heuristic: if we need to detect landing and determine landing time
@@ -523,6 +524,12 @@ Heuristic: if we need to detect landing and determine landing time
 * check coverage on final - for wider out, take characteristic point (e.g. 1000m & 1500m) before threshold, determine groundspeed & apply compression slow down for GPI around 300m inward from threshold
 * ....
 
+
+### visual check of throughput (~ landing time APDF ~ trajectory last point time)
+
+check on 15 min bins shows relatively good match; OSN overlaps APDF
+
+>TODO - check whether difference are non-ADSB flights
 
 ```{r}
 tmp1 <- apdf %>% 
@@ -552,16 +559,97 @@ tmp1 %>%
   NULL
 ```
 
+## Characteristics Points - Intersection with Distance from Ref Point (e.g. ARP)
+
+library trrrj to the rescue!
+
+```{r}
+library(trrrj)
+arp  <- c( lon = aip %>% filter(REF == "ARP") %>% pull(LON)
+          ,lat = aip %>% filter(REF == "ARP") %>% pull(LAT)
+          )
+
+c40  <- polygon_at_distance(geo = arp, d = 40)
+c100 <- polygon_at_distance(geo = arp, d = 100)
+c200 <- polygon_at_distance(geo = arp, d = 200)
+
+trjs    <- ds %>% mutate(ID = paste0(FLTID, ICAO24)) %>% filter(ID %in% arrs$ID)
+trjs_ls <- trjs %>% select(TIME, FLTID, ICAO24, ID, LAT, LON) %>% 
+  cast_latlon_to_pts() %>% 
+  cast_pts_to_ls(.group_var = FLTID)
+
+# to calculate intersections between polygon (circle) and linestring (trjectory)
+# polygon needs to be casted to a "linestring" (otherwise we get what is inside the poly)
+crossings <- st_intersection(trjs_ls, c40 %>% st_cast("LINESTRING"))
+
+ggplot() + 
+  geom_sf(data = c200) +
+  geom_sf(data = c100) +
+  geom_sf(data = c40) +
+  geom_sf(data = trjs_ls, aes(color = FLTID)) +
+  geom_sf(data = crossings, color = "red", size = 2)
+  
+```
+
+I struggled for a while to find a good way to determine the crossing time.    
+The following is a brute force technique
+
+```{r}
+extract_pos_at_distance_from_point <- function(.trj_df, .pt, .dist, .col_name = CX){
+  dist_NM_m <- .dist * 1852
+  pos <- .trj_df %>%
+    mutate(DIST = geosphere::distHaversine(cbind(LON, LAT), .pt)) %>%
+    filter(between(DIST, dist_NM_m - 200, dist_NM_m + 200 )) %>%
+    group_by(FLTID) %>%
+    mutate(DIST2 = abs(DIST - dist_NM_m))%>%
+    filter(DIST2 == min(DIST2)) 
+  pos <- pos %>% rename({{.col_name}} := DIST)
+  return(pos)
+}
+```
+
+```{r}
+trjs %>% select(FLTID, ICAO24, TIME, LAT, LON) %>% 
+  extract_pos_at_distance_from_point(arp, 40, DIST_C40)
+```
+
+alternative implementation with {sftrack}
+
+> TODO: could not get the as_sftrack/traj() going for df - took detour via df -> sf -> sftraj
+
+```{r}
+library(sftrack)
+
+cast_latlon_to_sftrjs <- function(.df_trjs) {
+  sftrjs <- .df_trjs %>%
+    select(FLTID, ICAO24, TIME, LAT, LON) %>%
+    cast_latlon_to_pts() %>%
+    as_sftraj( coords=c("LON","LAT")
+            ,group = c(id = "FLTID", month = "ICAO24")   # {sftrack} expects month
+            , time = "TIME") 
+  return(sftrjs)
+}
+
+sf_trjs <- trjs %>% cast_latlon_to_sftrjs()
+head(sf_trjs, 10)
+```
+
+```{r}
+sf_trjs[st_intersects(sf_trjs, c40 %>% st_cast("LINESTRING"), sparse = FALSE),]
+```
 
 
 
 
-what do I need per (arrival) trajectory?
+what do we need per (arrival) trajectory?
 
-- landing runway
-- actual landing time
+- identify flight (entry 200NM to airport)      DONE (by traffic lib)
+- unique id (ensure no same FLTID and ICAO24)
+- landing runway           DONE
+- actual landing time      DONE ~ taken from given flights
 - asma points
   - 40NM crossing time, crossing lat/lon & bearing
   - 100NM crossing time, lat/long & bearing
 - associated time to fly
 - associated distance to fly
+- associated grid cell

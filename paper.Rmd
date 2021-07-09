@@ -123,11 +123,11 @@ FIG X is build from this flight dataset. XXXXXXXXXXXXXXX
 
 For this study the lower level trajectory data is used. The data was downloaded from Opensky Network making use of the *traffic library* [@olive_traffic_2019]. The library supports the targeted extraction of trajectories landing and departing from the chosen airports. The respective trajectory data for March and May 2019, 2020, and 2021 was downloaded.
 
->TODO - ADD TABLE WITH data size for MAR/MAY 2019, 2020, and 2020
+> TODO - ADD TABLE WITH data size for MAR/MAY 2019, 2020, and 2020
 
 The validity of the data was checked by comparing the extracted data with the airport operator flow (APDF) of EUROCONTROL's Performance Review Unit. The APDF data [ref to data specs] is collected monthly in accordance with the associated data specification. The data is used for the regular performance monitoring under the EUROCONTROL Performance Review System and the European Sky Performance Scheme.
 
->TODO - comparison of APDF with OSN data - number of flights / any specifics.
+> TODO - comparison of APDF with OSN data - number of flights / any specifics.
 
 (ref:apdf-timeline)APDF timeline for arrivals at the study airport
 
@@ -137,13 +137,9 @@ knitr::include_graphics("./figures/airport-timeline-2019-2020-2021.png")
 
 Figure \@ref(fig:apdf-timeline) shows SOMETHING ...
 
-
 ## Data
 
-This study uses data from Opensky Network.
-The project downloaded the associated flight tables for 3 major airports in Europe and 2 months.
-With a view to the sharp decline in air traffic in March 2020 and an initial recovery in May, we chose these 2 months in 2019, 2020, and 2021.
-This provides characteristics and comparable months and supports the idea of taking snapshots pre-COVID, during the traffic decline, and a year after this initial disruption.
+This study uses data from Opensky Network. The project downloaded the associated flight tables for 3 major airports in Europe and 2 months. With a view to the sharp decline in air traffic in March 2020 and an initial recovery in May, we chose these 2 months in 2019, 2020, and 2021. This provides characteristics and comparable months and supports the idea of taking snapshots pre-COVID, during the traffic decline, and a year after this initial disruption.
 
 The study data accounted for xx GB
 
@@ -151,7 +147,7 @@ The study data accounted for xx GB
 
 During an initial data validation step the downloaded data was compared to the monthly performance data collected from European airports by the Performance Review Unit of EUROCONTROL.
 
->ADD COMPARISON WITH APDF AND LEVEL OF OVERLAP
+> ADD COMPARISON WITH APDF AND LEVEL OF OVERLAP
 
 # Results
 
