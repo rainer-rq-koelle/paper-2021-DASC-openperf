@@ -13,7 +13,10 @@ library(arrow)
 library(dplyr)
 library(purrr)
 library(tidyr)
+library(sf)
+library(sftrack)
 library(geosphere)
+library(trrrj)
 library(ggplot2)
 library(patchwork)
 
@@ -322,7 +325,6 @@ Note: interesting offset of some arrivals !?!
 bboxfinder: 51.461066,-0.506401,51.482666,-0.412846
 
 ```{r}
-library(sf)
 egll_box <- st_bbox(c( xmin = -0.506401, xmax = -0.412846
                       ,ymin = 51.461066, ymax = 51.482666)
                     ,crs = st_crs(4326)) %>%
@@ -568,7 +570,6 @@ tmp1 %>%
 library trrrj to the rescue!
 
 ```{r}
-library(trrrj)
 arp  <- c( lon = aip %>% filter(REF == "ARP") %>% pull(LON)
           ,lat = aip %>% filter(REF == "ARP") %>% pull(LAT)
           )
@@ -622,7 +623,7 @@ alternative implementation with {sftrack}
 > TODO: could not get the as_sftrack/traj() going for df - took detour via df -> sf -> sftraj
 
 ```{r}
-library(sftrack)
+#library(sftrack)
 
 cast_latlon_to_sftrjs <- function(.df_trjs) {
   sftrjs <- .df_trjs %>%
@@ -642,7 +643,51 @@ head(sf_trjs, 10)
 sf_trjs[st_intersects(sf_trjs, c40 %>% st_cast("LINESTRING"), sparse = FALSE),]
 ```
 
+## Playing around with grid cells - h3r
 
+H3 is a hexagonal hierarchical geospatial indexing system. 
+
+```{r}
+library(h3)
+
+coords <- c(37.3615593, -122.0553238)
+resolution <- 8
+# Convert a lat/lng point to a hexagon index at resolution 8
+(h3_index <- geo_to_h3(coords, resolution)) 
+```
+
+assigning coordinates to cells is a breeze!!!!
+
+```{r}
+trjs_to_cells <- trjs %>% select(FLTID, ICAO24, TIME, LAT, LON) %>% 
+  mutate(CELL = geo_to_h3(c(LAT, LON), res = 8))
+
+trjs_to_cells %>% slice_sample(n = 15)
+```
+
+Check how many hits we get for resolution 8 (a bit under 500m radius)
+
+```{r}
+trjs_to_cells %>% group_by(FLTID, CELL) %>% summarise(N = n())
+```
+
+```{r}
+cell_counts <- trjs_to_cells %>% group_by(CELL) %>% summarise(N = n())
+hexs <- h3_to_geo_boundary_sf(cell_counts$CELL)
+hexs <- hexs %>% bind_cols(cell_counts)
+hexs
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = hexs, aes(color = as.factor(N)))
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = hexs, aes(color = as.factor(N), fill = as.factor(N))) +
+  coord_sf(xlim = c(-0.75,0.5), ylim = c(51.2,51.62))
+```
 
 
 what do we need per (arrival) trajectory?
