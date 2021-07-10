@@ -228,11 +228,41 @@ ggplot(aes(x = LON, y = LAT, colour = ICAO24)) +
 
 ```{r}
 ds %>% filter(FLTID %in% arrs$FLTID, ICAO24 %in% arrs$ICAO24) %>%
-ggplot(aes(x = TIME, y = geoaltitude, colour = ICAO24)) +
+ggplot(aes(x = TIME, y = altitude, colour = ICAO24)) +
   geom_point()
 ```
 
-TODO - smooth altitude     
+> TODO - smooth altitude     
+
+```{r}
+ds %>% filter(FLTID %in% arrs$FLTID, ICAO24 %in% arrs$ICAO24) %>%
+  select(FLTID, ICAO24, TIME, LAT, LON, altitude) %>%
+  rename(longitude = LON, latitude = LAT) %>%
+  smooth_positions() %>%
+
+ggplot(aes(x = TIME, y = altitude, colour = ICAO24)) +
+  geom_point() +
+  labs(title = 'smoothing adds more outliers for altitude as it pulls good data!' )
+```
+
+```{r}
+ds %>% filter(FLTID %in% arrs$FLTID, ICAO24 %in% arrs$ICAO24) %>%
+  select(FLTID, ICAO24, TIME, LAT, LON, altitude) %>%
+  group_by(FLTID, ICAO24) %>% 
+  mutate( v_change = altitude - lead(altitude)
+         ,jump     = abs(v_change) > 500
+        # , jump2 = lead(jump), jump3 = lag(jump)
+         , alt_sm  = zoo::rollmedian(altitude, k = 7, align = "center", fill = NA)) %>%
+
+ggplot(aes(x = TIME, y = alt_sm, colour = ICAO24)) +
+  geom_point() 
+```
+
+
+
+
+
+
 OBSERVATION - trajectories feel to be cut off at runway or close to ground := no ground data
 
 ```{r}
