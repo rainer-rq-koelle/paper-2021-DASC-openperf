@@ -155,6 +155,7 @@ p <- tmp %>%
   theme_minimal() +
   labs(y = NULL, x = NULL) +
   theme(legend.position = "none")
+
 # ggsave("./figures/airport-timeline-2019-2020-2021.png", dpi = 320, height = 6, width = 8)
 p
 ```
@@ -498,6 +499,31 @@ rwy_ctr_line(aip) %>% rwy_ctr_line_pts() %>%
   geom_sf(aes(colour = REF), linetype = "dashed") + 
   geom_sf(data = trj_pts)
 ```
+
+## Landing Confirmation with Runway System Polygon (convex hull)
+
+```{r}
+rwy_system_hull <- function(.aip, .ctrl_length){
+    rwys <- .aip %>% filter(TYPE == "THR") %>%
+        rwy_ctr_line(.ctrl_length) %>%
+        rwy_ctr_line_pts() %>%
+        cast_latlon_to_pts() %>%
+        st_buffer(dist = 500) %>%
+        st_union() %>%
+        st_convex_hull()
+}
+```
+
+```{r}
+ggplot() + 
+  geom_sf(data = rwy_system_hull(aip, 5000), color = "lightblue") + 
+  geom_sf(data = aip %>% filter(TYPE == "THR") %>% cast_latlon_to_pts(), color = "red") + 
+  geom_sf(data = trj_pts)
+```
+
+
+
+## Landing Runway Identification
 
 based on centerline we can associate the - estimated - landing runway
 
