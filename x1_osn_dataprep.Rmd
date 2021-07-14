@@ -1,0 +1,35 @@
+---
+title: "Trajectory Processing"
+author: "PRU"
+date: "14/07/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(arrow)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(sf)
+library(sftrack)
+library(geosphere)
+library(trrrj)
+
+source("./R/make_nice_names_trafficlib.R")
+```
+
+## Overview
+
+This Rmd documents the data preparatory steps following the data exploratory stage (c.f. x0_eda ...Rmd).
+The focus is on cleaning the eda utility functions to establish the analytic data required for this study.
+
+
+```{r}
+#ds <- read_feather("./data-raw/EGLL_2019-03-01_history.feather") %>% as_tibble()
+ds <- read_feather("./data-raw/EGLL_2021-03-01_history.feather") %>% as_tibble()
+ds <- ds %>% make_nice_names_trafficlib()
+```
+
