@@ -586,6 +586,43 @@ Heuristic: if we need to detect landing and determine landing time
 * check coverage on final - for wider out, take characteristic point (e.g. 1000m & 1500m) before threshold, determine groundspeed & apply compression slow down for GPI around 300m inward from threshold
 * ....
 
+```{r}
+#'coerce runway id to heading
+rwy_to_number <- function(.rwy){
+     rwy_dir <- gsub("\\D","", .rwy) # strip non-digets and replace with empty
+     rwy_dir <- ((as.numeric(rwy_dir) * 10) + 360) %% 360
+ }
+
+#' estimation of time over threshold based on last position before threshold and associated ground speed
+#'
+estimate_threshold_time <- function(.trjs_latlon, .debug = FALSE){
+ last_pos <- .trjs_latlon %>% 
+  mutate(DIST_THR = distHaversine(cbind(LON, LAT), cbind(LON_THR,LAT_THR))
+        , BRG_THR = bearingRhumb( cbind(LON, LAT), cbind(LON_THR, LAT_THR))
+        , BEFORE  = abs(BRG_THR - rwy_to_number(RWY)) < 30
+        , COASTG  = DIST_THR == lag(DIST_THR)
+        , V_GND   = (lag(DIST_THR) - DIST_THR) / as.numeric(TIME - lag(TIME))
+        , V_GND_SM= zoo::rollmean(V_GND, k = 9, fill = NA, align = "right")
+        ) %>%
+  # cut-off any position after the start of coasting
+  # or if there are positions post threshold ~ BRG <> landing direction
+  filter(COASTG == FALSE & BEFORE == TRUE )
+  
+  last_15 <- last_pos %>% tail(n = 15) 
+  avg_final_app_speed <- mean(last_15$V_GND_SM)  
+  
+  thr_row <- last_pos %>% tail(n = 1) %>%
+    mutate(LAT = LAT_THR, LON = LON_THR
+          ,TIME = TIME + ceiling(DIST_THR / avg_final_app_speed)  # round up for complete secs
+          ,DIST_THR = 0                                           # @ threshold!
+    )
+  if(.debug == FALSE) thr_row <- thr_row %>% pull(TIME)
+  return(thr_row)
+}
+```
+
+
+(    rq[4,] %>% unnest(data) %>% left_join(aip %>% filter(TYPE == "THR") %>% select(RWY = REF, LAT_THR = LAT, LON_THR = LON)) %>% estimate_threshold_time()    ) %>% tail(20)
 
 ### visual check of throughput (~ landing time APDF ~ trajectory last point time)
 
