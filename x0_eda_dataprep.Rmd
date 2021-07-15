@@ -317,6 +317,7 @@ aip<- tribble(
   ,"EGLL", "09R", "RWY 09R/27L", "THR", "R2", 51.464833, -0.482333, 75
   ,"EGLL", "27L", "RWY 09R/27L", "THR", "R2", 51.465,     -0.434,   77
 )
+# write_csv(aip, "./data/aip.csv")
 ```
 
 
