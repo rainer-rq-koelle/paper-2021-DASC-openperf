@@ -19,7 +19,6 @@ for adsb_file in glob.iglob(base_dir + '/**/*.feather', recursive=True):
         print(f"File {dest_file} exists already...skipping {airport} on {date}.")
         continue
     ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
-    ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     print(f"Processing {airport} on {date}, {adsb_file}...{ts}")
     print(f"saving result in {dest_file}...")
     # tb = pa.csv.read_csv(adsb_file)
