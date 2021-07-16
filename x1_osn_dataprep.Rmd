@@ -27,6 +27,7 @@ source('./R/cast_sf_utils.R')
 source('./R/rwy_system.R')
 source('./R/identify_runway.R')
 source('./R/estimate_threshold_time.R')
+source('./R/calc_crossing.R')
 ```
 
 ## Overview
@@ -81,8 +82,10 @@ rq3 <- rq2 %>%
   unnest(THR_TIME)
 
 # ----------------------- determine ASMA crossings ----------------------------
-  
+asma <- rq2 %>% select(-last_4d, -rwy)  
+
+ asma[1, c("UID","data")] %>% unnest(data) %>% extract_pos_at_distance_from_point(.pt = aip %>% filter(TYPE == "ARP") %>% df_to_geo_lonlat(), .dist = 40)
 ```
 
-idea: unnext last_4d combine with RWY, LAT_THR, LON_THR and then nest again to have "data" in right format for function
+
 
