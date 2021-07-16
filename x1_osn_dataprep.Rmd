@@ -20,7 +20,9 @@ library(trrrj)
 
 source("./R/make_nice_names_trafficlib.R")
 source('./R/make_unique_id.R')
+source('./R/remove_orphans.R')
 source('./R/extract_4d_nest.R')
+source('./R/confirm_arrival_at.R')
 source('./R/cast_sf_utils.R')
 source('./R/rwy_system.R')
 source('./R/identify_runway.R')
@@ -65,6 +67,7 @@ rq2 <- rq %>% filter(ARR == TRUE) %>%
   ) %>% 
   tidyr::unnest(RWY)
 
+# ----------------------- determine threshold time ----------------------------
 rq3 <- rq2 %>% 
   # append runway coordinates
   left_join(aip %>% 
@@ -72,7 +75,12 @@ rq3 <- rq2 %>%
               select(RWY = REF, LAT_THR = LAT, LON_THR = LON)
             ) %>%
   
-  mutate(THR_TIME = map(.x = last_4d, .f = ~estimate_threshold_time(.x %>% unnest())))
+  unnest(last_4d) %>% group_by(UID) %>% nest() %>% 
+  mutate(THR_TIME = map(.x = data, .f= ~ estimate_threshold_time(.x))
+         ) %>% 
+  unnest(THR_TIME)
+
+# ----------------------- determine ASMA crossings ----------------------------
   
 ```
 
