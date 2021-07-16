@@ -2,9 +2,12 @@
 title: "Building Back Better – Democratisation of Performance Monitoring with Open Data"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
-#  bookdown::pdf_book:
-#     base_format: rticles::ieee_article
-  bookdown::word_document2
+  bookdown::html_document2:
+    default
+  bookdown::word_document2:
+    default
+# bookdown::pdf_book:
+#   base_format: rticles::ieee_article
 bibliography: "DASC2021.bib"
 affiliation:
   ## use one only of the following
@@ -112,6 +115,44 @@ The overarching objective of air navigation is the "safe, efficient, and orderly
 -   describe trajectory basics, dedicated timestamps, and identification problems (e.g. runway)
 
 -   develop analytical workflow/algorithm (cleaning & filtering \>\> segmentation \>\> rwy id \>\> ...)
+
+The access to historical ADS-B data was provided by Opensky Network (OSN) [@Schaefer14a].
+OSN is a collaborative crowdsourcing platform collecting ADS-B/Mode S messages
+shared by aviation enthusiasts around the world.
+OSN provides free access to its data for research purposes.
+
+For this study we collected trajectories for movements at 3 European airports,
+namely London Heathrow (IATA: LHR, ICAO: EGLL), Amsterdam Schiphol (IATA: AMS,
+ICAO: EHAM) and Zurich Airport (IATA: ZRH, ICAO: LSZH), for the
+months of March and May of 2019, 2020 and 2021.
+
+For the collection of ADS-B data and
+the extraction of arrival runway (RWY) and
+landing time, we used the `traffic` Python library [@olive2019traffic].
+
+`traffic` converts the data from OSN to structures wrapping
+`pandas` data frames and then it provides specialised semantics for
+aircraft trajectories (e.g., intersection, re-sampling or filtering).
+Given an ICAO 24-bit identifier, it iterates over trajectories based on
+contiguous timestamps of data reports.
+
+The following code shows how to download one day of traffic departures from and
+arrivals to EGLL.
+It keeps only portions within 200 NM from the airport and resamples each 
+trajectory at 1 second before storing in a file. 
+
+```{python example-download, fig.cap='(ref:example-download)', code=xfun::read_utf8(here::here('python', 'example-download.py')), eval = FALSE, echo=TRUE}
+```
+
+For the extraction of landing RWY and landing time, we used code as from the
+following snippet. Here we consider only arrivals, i.e. `landing_at`, and extract
+portions aligned with the different runways, `aligned_on_{airport}`, 
+finally we decide on the RWY where the aircraft has touched down by taking
+the one that shos up the maximum number of times, i.e. `ILS_max`.
+
+```{python example-processing, fig.cap='Ciao', code=xfun::read_utf8(here::here('python', 'example-processing.py')), eval = FALSE, echo=TRUE}
+```
+
 
     -   cross-reference to "grammar" of trajectory [@olive_traffic_2019]
 
