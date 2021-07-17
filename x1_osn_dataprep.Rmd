@@ -1,0 +1,91 @@
+---
+title: "Trajectory Processing"
+author: "PRU"
+date: "14/07/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(arrow)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(sf)
+library(sftrack)
+library(geosphere)
+library(trrrj)
+
+source("./R/make_nice_names_trafficlib.R")
+source('./R/make_unique_id.R')
+source('./R/remove_orphans.R')
+source('./R/extract_4d_nest.R')
+source('./R/confirm_arrival_at.R')
+source('./R/cast_sf_utils.R')
+source('./R/rwy_system.R')
+source('./R/identify_runway.R')
+source('./R/estimate_threshold_time.R')
+source('./R/calc_crossing.R')
+```
+
+## Overview
+
+This Rmd documents the data preparatory steps following the data exploratory stage (c.f. x0_eda ...Rmd).
+The focus is on cleaning the eda utility functions to establish the analytic data required for this study.
+
+
+```{r}
+apt <- "EGLL"
+aip <- readr::read_csv("./data/aip.csv") %>%
+  filter(ICAO == apt)
+
+# load trajectory data
+ds <- read_feather("./data-raw/EGLL_2019-03-01_history.feather") %>% as_tibble()
+# ds <- read_feather("./data-raw/EGLL_2021-03-01_history.feather") %>% as_tibble()
+
+ds <- ds %>% 
+  make_nice_names_trafficlib() %>%
+  make_unique_id() %>% 
+  remove_orphans(1500)
+
+meta <- ds %>% group_by(UID) %>% summarise(N = n(), ADEP = unique(ADEP), ADES = unique(ADES))
+
+rq <- ds %>% 
+  extract_4d_nest() %>%
+  confirm_arrival_at(aip %>% rwy_system_hull(5000))
+
+rwy_ctr_line_ls <- aip %>% 
+  rwy_ctr_line() %>% 
+  rwy_ctr_line_pts() %>% 
+  cast_latlon_to_pts() %>% cast_pts_to_ls(REF)
+
+rq2 <- rq %>% filter(ARR == TRUE) %>%
+  
+  mutate( rwy = map(.x = last_4d, .f = ~identify_rwy(.x %>% cast_latlon_to_pts() , rwy_ctr_line_ls))
+         ,RWY = map(.x = rwy, .f = ~.x %>% filter(TRUST == max(TRUST)) %>% pull(REF))
+  ) %>% 
+  tidyr::unnest(RWY)
+
+# ----------------------- determine threshold time ----------------------------
+rq3 <- rq2 %>% 
+  # append runway coordinates
+  left_join(aip %>% 
+              filter(TYPE == "THR") %>% 
+              select(RWY = REF, LAT_THR = LAT, LON_THR = LON)
+            ) %>%
+  
+  unnest(last_4d) %>% group_by(UID) %>% nest() %>% 
+  mutate(THR_TIME = map(.x = data, .f= ~ estimate_threshold_time(.x))
+         ) %>% 
+  unnest(THR_TIME)
+
+# ----------------------- determine ASMA crossings ----------------------------
+asma <- rq2 %>% select(-last_4d, -rwy)  
+
+ asma[1, c("UID","data")] %>% unnest(data) %>% extract_pos_at_distance_from_point(.pt = aip %>% filter(TYPE == "ARP") %>% df_to_geo_lonlat(), .dist = 40)
+```
+
+
+
