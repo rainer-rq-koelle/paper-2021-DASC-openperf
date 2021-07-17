@@ -560,6 +560,15 @@ Heuristic: if we need to detect landing and determine landing time
 * check coverage on final - for wider out, take characteristic point (e.g. 1000m & 1500m) before threshold, determine groundspeed & apply compression slow down for GPI around 300m inward from threshold
 * ....
 
+```{r}
+get_thr_coord <- function(.aip, .apt, .thr){
+    thr <- .aip %>% filter(ICAO == .apt, TYPE == "THR")
+    thr <- thr %>% filter(REF == .thr)
+    thr_coord_lonlat <- c(thr$LON, thr$LAT)
+}
+```
+
+
 
 ### visual check of throughput (~ landing time APDF ~ trajectory last point time)
 
