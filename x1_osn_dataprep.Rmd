@@ -38,42 +38,58 @@ The focus is on cleaning the eda utility functions to establish the analytic dat
 
 ```{r}
 apt <- "EGLL"
+fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+
+
+study_loop <- function(.apt, .fn, .debug = FALSE){
+  
+# ---------------------- read in airport data --------------------------------  
 aip <- readr::read_csv("./data/aip.csv") %>%
   filter(ICAO == apt)
 
-# load trajectory data
-ds <- read_feather("./data-raw/EGLL_2019-03-01_history.feather") %>% as_tibble()
-# ds <- read_feather("./data-raw/EGLL_2021-03-01_history.feather") %>% as_tibble()
+# ---------------------- load trajectory data --------------------------------
+ds <- read_feather(.fn) %>% as_tibble()
 
 ds <- ds %>% 
   make_nice_names_trafficlib() %>%
   make_unique_id() %>% 
-  remove_orphans(1500)
+  remove_orphans(500)
 
-meta <- ds %>% group_by(UID) %>% summarise(N = n(), ADEP = unique(ADEP), ADES = unique(ADES))
+meta <- ds %>% group_by(UID) %>% 
+  summarise(N = n(), ADEP = unique(ADEP), ADES = unique(ADES)
+            ,START = unique(start[!is.na(start)])
+            , STOP = unique(stop [!is.na(stop )]) )
 
-rq <- ds %>% 
+
+# ----------------------- label arrival traffic -------------------------------
+phase <- ds %>% 
   extract_4d_nest() %>%
-  confirm_arrival_at(aip %>% rwy_system_hull(5000))
+  confirm_arrival_at(aip %>% rwy_system_hull(7000))
 
+meta <- meta %>% left_join(phase %>% select(UID, ARR), by = "UID")
+
+# ---------------------- determine landing runway -----------------------------
 rwy_ctr_line_ls <- aip %>% 
   rwy_ctr_line() %>% 
   rwy_ctr_line_pts() %>% 
   cast_latlon_to_pts() %>% cast_pts_to_ls(REF)
 
-rq2 <- rq %>% filter(ARR == TRUE) %>%
+arrs <- phase %>% filter(ARR == TRUE) %>%
   
   mutate( rwy = map(.x = last_4d, .f = ~identify_rwy(.x %>% cast_latlon_to_pts() , rwy_ctr_line_ls))
          ,RWY = map(.x = rwy, .f = ~.x %>% filter(TRUST == max(TRUST)) %>% pull(REF))
   ) %>% 
   tidyr::unnest(RWY)
 
+meta <- meta %>% left_join(arrs %>% select(UID, RWY), by = "UID")
+
 # ----------------------- determine threshold time ----------------------------
-rq3 <- rq2 %>% 
+thrt <- arrs %>% 
   # append runway coordinates
   left_join(aip %>% 
               filter(TYPE == "THR") %>% 
               select(RWY = REF, LAT_THR = LAT, LON_THR = LON)
+            , by = "RWY"
             ) %>%
   
   unnest(last_4d) %>% group_by(UID) %>% nest() %>% 
@@ -81,11 +97,56 @@ rq3 <- rq2 %>%
          ) %>% 
   unnest(THR_TIME)
 
-# ----------------------- determine ASMA crossings ----------------------------
-asma <- rq2 %>% select(-last_4d, -rwy)  
+arrs <- arrs %>% left_join(thrt %>% select(UID, THR_TIME), by = "UID")
 
- asma[1, c("UID","data")] %>% unnest(data) %>% extract_pos_at_distance_from_point(.pt = aip %>% filter(TYPE == "ARP") %>% df_to_geo_lonlat(), .dist = 40)
+# ----------------------- determine ASMA crossings ----------------------------
+asma <- arrs %>% select(UID, data)  
+arp  <- aip %>% filter(TYPE == "ARP") %>% df_to_geo_lonlat()
+
+asma <- asma %>% 
+  mutate(
+    C40 = map( .x = data
+              ,.f = ~ extract_pos_at_distance_from_point(.x, .pt = arp , .dist = 40)
+            )
+    ,C50= map( .x = data
+              ,.f = ~ extract_pos_at_distance_from_point(.x, .pt = arp , .dist = 50)
+            )
+    ,C100= map( .x = data
+              ,.f = ~ extract_pos_at_distance_from_point(.x, .pt = arp , .dist = 100)
+            )
+  ) %>%
+  unnest(cols = contains("C"))
+
+arrs <- arrs %>% select(-c(data, last_4d, rwy)) %>%
+  left_join(asma %>% select(-data), by = "UID")
+
+# ---------------------- package and write out data ---------------------------
+prefix <- .fn %>% stringr::str_split(pattern = "_") %>% unlist()
+prefix <- prefix[2]  # grab date
+prefix <- paste0(apt, "-", prefix, "-")
+
+print( message(paste0("... writing files for ", prefix)) )
+write_csv(meta, file = paste0("./data/", prefix, "meta.csv"))
+write_csv(arrs, file = paste0("./data/", prefix, "asma.csv"))
+
+if(.debug)return(list(meta = meta, arrs = arrs))
+}
 ```
 
-variable naming conventions, ensure "last" entry, i.e. max(TIME)
+```{r, eval=FALSE}
+apt <- "EGLL"
+fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+
+study_loop(.apt = apt, .fn = fns[1])
+```
+
+```{r, message=FALSE}
+apt <- "EGLL"
+fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+#2nd run: fns <- fns[167:185]
+# itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
+fns <- fns[59:100]
+purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = ..2))
+```
+
 
