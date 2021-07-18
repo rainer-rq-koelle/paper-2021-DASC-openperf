@@ -87,5 +87,5 @@ asma <- rq2 %>% select(-last_4d, -rwy)
  asma[1, c("UID","data")] %>% unnest(data) %>% extract_pos_at_distance_from_point(.pt = aip %>% filter(TYPE == "ARP") %>% df_to_geo_lonlat(), .dist = 40)
 ```
 
-
+variable naming conventions, ensure "last" entry, i.e. max(TIME)
 
