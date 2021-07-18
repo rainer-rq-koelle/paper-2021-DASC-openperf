@@ -140,12 +140,12 @@ fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), fu
 study_loop(.apt = apt, .fn = fns[1])
 ```
 
-```{r, eval=FALSE}
+```{r, message=FALSE}
 apt <- "EGLL"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
-
-itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
-
+#2nd run: fns <- fns[167:185]
+# itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
+fns <- fns[59:100]
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = ..2))
 ```
 
