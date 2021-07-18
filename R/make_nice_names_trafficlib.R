@@ -21,7 +21,7 @@ make_nice_names_trafficlib <- function(.df){
             ,ALT    = altitude
             ,ALT_G  = geoaltitude
             ,GS     = groundspeed
-            ,DOF    = day
+           # ,DOF    = day --> let's determine this with unique ID
     )
   return(df)
 }

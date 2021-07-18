@@ -53,17 +53,18 @@ ds <- read_feather(.fn) %>% as_tibble()
 ds <- ds %>% 
   make_nice_names_trafficlib() %>%
   make_unique_id() %>% 
-  remove_orphans(1500)
+  remove_orphans(500)
 
 meta <- ds %>% group_by(UID) %>% 
   summarise(N = n(), ADEP = unique(ADEP), ADES = unique(ADES)
-            ,START = unique(start), STOP = unique(stop) )
+            ,START = unique(start[!is.na(start)])
+            , STOP = unique(stop [!is.na(stop )]) )
 
 
 # ----------------------- label arrival traffic -------------------------------
 phase <- ds %>% 
   extract_4d_nest() %>%
-  confirm_arrival_at(aip %>% rwy_system_hull(5000))
+  confirm_arrival_at(aip %>% rwy_system_hull(7000))
 
 meta <- meta %>% left_join(phase %>% select(UID, ARR), by = "UID")
 

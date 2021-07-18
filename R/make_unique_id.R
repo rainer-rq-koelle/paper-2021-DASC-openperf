@@ -15,7 +15,9 @@ make_unique_id <- function(.trjs_df, .max_dT = 500){
     dplyr::group_by(ICAO24, FLTID) %>%
     dplyr::arrange(TIME, .by_group = TRUE) %>%
     dplyr::mutate( dT  = TIME - lag(TIME, default = dplyr::first(TIME))
-                  ,LEG = 0) %>%        # set default value
+                  ,LEG = 0                                   # set default value
+                  ,DOF = lubridate::date(dplyr::first(TIME)) # set DOF
+       ) %>%
   # if there is a dT >= max_dT create new leg
     dplyr::mutate( LEG = if_else(dT >= .max_dT, 1, 0)
                   ,LEG = cumsum(LEG)   # create leg counter fill
@@ -23,7 +25,7 @@ make_unique_id <- function(.trjs_df, .max_dT = 500){
   df <- df %>% # could not get ungroup() to work in pipe
     dplyr::ungroup() %>%
   # uid := paste()
-    dplyr::mutate(UID = paste0(ICAO24,"-", FLTID,"-", lubridate::date(DOF),"-",LEG)) %>%
+    dplyr::mutate(UID = paste0(ICAO24,"-", FLTID,"-", DOF,"-",LEG)) %>%
   # sort and return
     dplyr::select(UID, ICAO24, FLTID, ADEP, ADES, TIME, LAT, LON, ALT, dplyr::everything())
   return(df)
