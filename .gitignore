@@ -1,5 +1,6 @@
 # heavy ADSB data
 data-raw/
+data/bins/
 
 # some larger data files shared via other means
 data/val-apdf*
