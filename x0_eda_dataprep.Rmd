@@ -801,3 +801,9 @@ what do we need per (arrival) trajectory?
 - associated time to fly
 - associated distance to fly
 - associated grid cell
+
+
+hexs <- h3_to_geo_boundary_sf(rq[[2]]$H3_BIN)
+hexs <- hexs %>% bind_cols(rq[[2]] %>% select(RWY, N, MIN_DIST_2GO, MIN_TIME_2GO))
+
+ggplot() + geom_sf(data = hexs %>% filter(MIN_DIST_2GO <= 500), aes(fill = MIN_DIST_2GO, color = MIN_DIST_2GO)) + scale_fill_distiller(palette = "Spectral") + scale_color_distiller(palette = "Spectral")
