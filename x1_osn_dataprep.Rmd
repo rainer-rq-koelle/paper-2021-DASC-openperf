@@ -148,9 +148,10 @@ apt <- "EHAM"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 #2nd run: fns <- fns[167:185]
 # itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
-fns <- fns[2:185]
+fns <- tail(fns,4)
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = ..2))
 ```
+
 
 
 Geographic indexing
@@ -162,15 +163,11 @@ study_index <- function(.apt, .fn, .debug = NULL){
 aip <- readr::read_csv("./data/aip.csv") %>%
   filter(ICAO == .apt) %>%
   select(RWY = REF, LAT, LON, TYPE)
-
 # ---------------------- get landing runway & thr time -----------------------
-
 what_date <- .fn %>% 
   stringr::str_split(pattern = "_") %>% 
   lubridate::parse_date_time("ymd")
-
 asma_fn <- paste0("./data/", apt, "-", what_date, "-asma.csv")
-
 ldgs <- readr::read_csv( asma_fn
                         ,col_types = cols_only( UID = col_character()
                                           ,ARR = col_logical()
@@ -179,22 +176,18 @@ ldgs <- readr::read_csv( asma_fn
                                           )
                         )
 ldgs <- ldgs %>% left_join(aip, by = "RWY")
-
 # ---------------------- load trajectory data --------------------------------
 ds <- read_feather(.fn) %>% as_tibble()
-
 ds <- ds %>%
   make_nice_names_trafficlib() %>%
   make_unique_id() %>%
   remove_orphans(500)
-
 ds <- ds %>%
   left_join(ldgs %>% select(UID, RWY, THR_TIME), by = "UID") %>%
   select(UID, TIME, LAT, LON, RWY, THR_TIME) %>%
   group_by(UID) %>%
   filter(TIME <= THR_TIME) %>%   # cut trajectory data to before threshold
   ungroup()
-
 ds <- ds %>%
   bind_rows(ldgs %>% rename(TIME = THR_TIME) %>% select(-ARR)) %>%
   select(-THR_TIME) %>%           # remove unused column
@@ -208,11 +201,9 @@ ds <- ds %>%
          ,DIST_2GO = cumulative_distance, TIME_2GO = cumulative_time ) %>%
   mutate(TIME_2GO = - TIME_2GO) %>%     # correct sign
   ungroup()
-
 # ---------------------- geographic indexing
 ds <- ds %>%
    mutate(H3_BIN = geo_to_h3(c(LAT, LON), res = 8))
-
 bins <- ds %>% group_by(H3_BIN, RWY) %>%
    summarise( N = n()
              ,MIN_DIST_2GO = min(DIST_2GO) , MIN_TIME_2GO = min(TIME_2GO)
@@ -221,21 +212,16 @@ bins <- ds %>% group_by(H3_BIN, RWY) %>%
              ,MAX_DIST_2GO = max(DIST_2GO) , MAX_TIME_2GO = max(TIME_2GO)
              ,.groups = "drop") %>%
   mutate(DOF = what_date)
-
 warning(paste0("writing bins for ", what_date, " - ", .apt))
 bin_fn <- paste0("./data/", .apt, "-", what_date, "-bins.csv")
 write_csv(bins, file = bin_fn)
-
 if(.debug) return(list(ds, bins))
 }
-
 ```
 
 ```{r}
 apt <- "EGLL"
 fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
-
 (rq <- study_index(apt, fns[1]))
 ```
-
 
