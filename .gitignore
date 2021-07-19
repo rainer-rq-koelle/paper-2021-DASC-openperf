@@ -5,6 +5,9 @@ data-raw/
 data/val-apdf*
 data/*.zip
 
+paper.log
+paper.tex
+
 
 ######## R project specific (R.gitignore)
 # from https://github.com/github/gitignore/
