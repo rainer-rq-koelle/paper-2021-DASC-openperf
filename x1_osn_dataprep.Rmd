@@ -37,8 +37,8 @@ The focus is on cleaning the eda utility functions to establish the analytic dat
 
 
 ```{r}
-apt <- "EGLL"
-fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+#apt <- "EGLL"
+#fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 
 
 study_loop <- function(.apt, .fn, .debug = FALSE){
@@ -48,6 +48,7 @@ aip <- readr::read_csv("./data/aip.csv") %>%
   filter(ICAO == apt)
 
 # ---------------------- load trajectory data --------------------------------
+warning(paste(.apt, " - reading - ", .fn))
 ds <- read_feather(.fn) %>% as_tibble()
 
 ds <- ds %>% 
@@ -134,19 +135,19 @@ if(.debug)return(list(meta = meta, arrs = arrs))
 ```
 
 ```{r, eval=FALSE}
-apt <- "EGLL"
-fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+# apt <- "EGLL"
+apt <- "EHAM"
+fns <- list.files(path = paste0("./data-raw/",apt,"/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 
 study_loop(.apt = apt, .fn = fns[1])
 ```
 
 ```{r, message=FALSE}
-apt <- "EGLL"
+apt <- "EHAM"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 #2nd run: fns <- fns[167:185]
 # itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
-fns <- fns[59:100]
+fns <- fns[2:185]
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = ..2))
 ```
-
 
