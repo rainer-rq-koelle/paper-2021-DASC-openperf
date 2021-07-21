@@ -157,7 +157,7 @@ purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = 
 Geographic indexing
 
 ```{r}
-study_index <- function(.apt, .fn, .debug = NULL){
+study_index <- function(.apt, .fn, .debug = FALSE){
   
 # ---------------------- read in airport data --------------------------------  
 aip <- readr::read_csv("./data/aip.csv") %>%
@@ -213,7 +213,7 @@ bins <- ds %>% group_by(H3_BIN, RWY) %>%
              ,.groups = "drop") %>%
   mutate(DOF = what_date)
 warning(paste0("writing bins for ", what_date, " - ", .apt))
-bin_fn <- paste0("./data/", .apt, "-", what_date, "-bins.csv")
+bin_fn <- paste0("./data/bins", .apt, "-", what_date, "-bins.csv")
 write_csv(bins, file = bin_fn)
 if(.debug) return(list(ds, bins))
 }
