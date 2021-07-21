@@ -2,8 +2,8 @@
 title: "Building Back Better – Democratisation of Performance Monitoring with Open Data"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
-  bookdown::html_document2:
-    default
+#  bookdown::html_document2:
+#    default
   bookdown::word_document2:
     default
 # bookdown::pdf_book:
@@ -203,6 +203,20 @@ During an initial data validation step the downloaded data was compared to the m
 -   (vertical) FE
 
 ## Sequencing
+
+The utilisation of open data to assess operational efficiency in the arrival phase is a driver of this work.
+
+<<<< we applied the following >>>>
+
+(ref:fig-sequencing-effort-along-trajectory) Example of the sequencing effort along the flown trajectory.
+
+```{r fig-sequencing-effort-along-trajectory, fig.cap="(ref:fig-sequencing-effort-along-trajectory)"}
+knitr::include_graphics("./figures/sia322.png")
+```
+
+Figure \@ref(fig:fig-sequencing-effort-along-trajectory) depicts the arrival trajectory of flight SIA322 at London Heathrow (EGLL) on 1. March 2019.
+The figure shows how the flight was prolonged by a continued North-westerly heading taking the flight to the north of the airport before turning it towards the arrival holding stack area.
+
 
 ## Something Fancy and New?
 

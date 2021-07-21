@@ -234,3 +234,94 @@ fns <- fns[74:length(fns)]
 
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn = ..2))
 ```
+
+
+## Calculating Spacing results
+
+```{r}
+.apt <- "EGLL"
+#fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+# dev files
+fns <- list.files(path = paste0("./data-raw/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+.fn <- fns[1]
+
+# ---------------------- load trajectory data --------------------------------
+warning(paste(.apt, " - reading - ", .fn))
+ds <- read_feather(.fn) %>% as_tibble()
+
+ds <- ds %>% 
+  make_nice_names_trafficlib() %>%
+  make_unique_id() %>% 
+  remove_orphans(500)
+
+ds <- ds %>% select(UID, TIME, LAT, LON) %>% 
+  mutate(H3_BIN = geo_to_h3(c(LAT, LON), res = 8))
+
+# ---------------------- get landing runway & thr time -----------------------
+what_date <- .fn %>% 
+  stringr::str_split(pattern = "_") %>% 
+  lubridate::parse_date_time("ymd")
+asma_fn <- paste0("./data/", apt, "-", what_date, "-asma.csv")
+asma <- readr::read_csv( asma_fn
+                        ,col_types = cols_only( UID = col_character()
+                                         # ,ARR = col_logical()
+                                          ,RWY = col_character()
+                                          ,THR_TIME = col_datetime()
+                                          )
+)
+
+# ---------------------- loading bins and min times --------------------------
+bins_fn <- list.files(path = "./data/", pattern = "-bins.csv", full.names = TRUE)
+bins <- read_csv( bins_fn
+                 , col_types = cols_only(
+                         H3_BIN = col_character()
+                        ,   RWY = col_character()
+                        ,     N = col_double()
+                        ,MIN_DIST_2GO = col_double()
+                        ,MIN_TIME_2GO = col_double()
+                 ))
+
+# ---------------------- glue together all data sets --------------------------
+rq <- ds %>% 
+  left_join(asma, by = "UID") %>%
+  left_join(bins, by = c("H3_BIN", "RWY")) %>%
+  mutate(TIME_2GO = THR_TIME - TIME) %>%
+  filter(TIME_2GO >= 0)        # to account for t after threshold
+
+rq <- rq %>%
+  mutate(TIME_SEQ = TIME_2GO - MIN_TIME_2GO)
+```
+
+
+uids <- rq$UID
+
+plot_single_time_seq <- function(.trj_binned_2go){
+     df <- .trj_binned_2go
+     gg <- ggplot(data = df) +
+         geom_line(aes(x = TIME_2GO, y = TIME_SEQ)) +
+         labs(subtitle = df$UID)
+     print(gg)
+ }
+
+rq %>% filter(UID %in% sample(uids, size = 1)) %>% plot_single_time_seq()
+
+rq %>% filter(UID == "76cd76-SIA322-2019-03-01-0") %>% ggplot() + geom_point(aes(x = LON, y = LAT, color = as.numeric(TIME_SEQ))) + scale_color_distiller(palette = "Spectral")
+
+sia322 <- rq %>% filter(UID == "76cd76-SIA322-2019-03-01-0") 
+plot_trajecory_seq_time <- function(.trj){
+ df <- .trj
+gg <- ggplot(data = df) + 
+  geom_point(aes(x = LON, y = LAT, color = as.numeric(TIME_SEQ))) + 
+  scale_color_distiller(palette = "Spectral") + 
+  labs(subtitle = unique(df$UID)
+       , color = "sequencing (seconds)"
+       , x = NULL, y = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = c(0.2, 0.2)) +
+#  coord_map() +
+  NULL
+print(gg)
+return(gg)
+}
+
