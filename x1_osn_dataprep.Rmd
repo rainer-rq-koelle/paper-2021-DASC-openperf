@@ -207,21 +207,30 @@ ds <- ds %>%
 bins <- ds %>% group_by(H3_BIN, RWY) %>%
    summarise( N = n()
              ,MIN_DIST_2GO = min(DIST_2GO) , MIN_TIME_2GO = min(TIME_2GO)
-             ,P20_DIST_2GO = quantile(DIST_2GO, probs = 0.2), P20_TIME_2GO = quantile(TIME_2GO, probs = 0.2)
+             ,P20_DIST_2GO = quantile(DIST_2GO, probs = 0.2, na.rm =TRUE), P20_TIME_2GO = quantile(TIME_2GO, probs = 0.2, na.rm =TRUE)
              ,AVG_DIST_2GO = mean(DIST_2GO), AVG_TIME_2GO = mean(TIME_2GO)
              ,MAX_DIST_2GO = max(DIST_2GO) , MAX_TIME_2GO = max(TIME_2GO)
              ,.groups = "drop") %>%
   mutate(DOF = what_date)
-warning(paste0("writing bins for ", what_date, " - ", .apt))
-bin_fn <- paste0("./data/bins", .apt, "-", what_date, "-bins.csv")
+
+warning(paste0("\nwriting bins for ", what_date, " - ", .apt))
+bin_fn <- paste0("./data/bins/", .apt, "-", what_date, "-bins.csv")
 write_csv(bins, file = bin_fn)
+
 if(.debug) return(list(ds, bins))
 }
 ```
 
-```{r}
+```{r, eval=FALSE}
 apt <- "EGLL"
 fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 (rq <- study_index(apt, fns[1]))
 ```
 
+```{r, message=FALSE}
+apt <- "EGLL"
+fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+fns <- fns[74:length(fns)]
+
+purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn = ..2))
+```
