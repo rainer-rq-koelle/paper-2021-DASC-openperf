@@ -94,7 +94,7 @@ extract_and_save_apdf_valdata <- function(.apt, .yr){
 }
 
 # testing (apdf <- read_apdf("EGLL", 2019) %>% extract_study_month())
-apts <- c("EGLL", "EHAM","LFPG")
+apts <- c("EGLL", "EHAM","LSZH") #    "LFPG")
 yrs  <- c(2019:2021)
 
 expand.grid(apt = apts, year = yrs) %>%

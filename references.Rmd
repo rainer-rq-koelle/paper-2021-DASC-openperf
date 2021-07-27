@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+author: "PRU"
+date: "26/07/2021"
+output:
+  word_document: default
+  html_document: default
+bibliography: DASC2021.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The rticles IEEE template failed to render properly. For the finalisation of the paper, this dummy list was created to extract the appropriate references.
+
+limited open data [@bourgois_opendata_2014] [@koelle_open_2017]
+
+OSN [@strohmeier_crowdsourced_2021] the data via zenodoo [@xavier_olive_2021_4893103]
+
+sun covid impact through complex lens [@sun_covid_complex_2020]
+
+grounded aircraft Adrienne [@adrienne_grounded_2020] [@pru_grounded_2021]
+
+airport impacrt [@nhamocovidairport2020]
+
+state aid [@truxal_stateaid_2020]
+
+sun paper hurricane [@sun_covid_2021]
+
+recovery fund [@Creel_recoveryfund_2020]
+
+flying and climate TE [@murphy_climate_2021]
+
+flight shame [@asquith_flightshame_2020]
+
+GANP [@icaodoc97502016]
+
+EASA climate impacts [@easa_climateimpact_2021]
+
+PRU/PRR 2020 [@prr2020]
+
+OSN Schaefer 2014 [@schafer_osn_2014]
+
+Doc 4444 [@icaodoc44442016]
+
+## REFERENCES

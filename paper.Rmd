@@ -2,12 +2,14 @@
 title: "Building Back Better – Democratisation of Performance Monitoring with Open Data"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
-#  bookdown::html_document2:
-#    default
-  bookdown::word_document2:
-    default
-# bookdown::pdf_book:
-#   base_format: rticles::ieee_article
+#------------ skipped bookdown as it throws an error/does not compile
+#------------ check later ... this seems to be linked to figure size
+  # bookdown::pdf_book:
+  #   base_format: rticles::ieee_article
+bookdown::html_document2:
+  default
+  # bookdown::word_document2:
+  #     reference_docx: tmpl_rq-tweaks.docx
 bibliography: "DASC2021.bib"
 affiliation:
   ## use one only of the following
