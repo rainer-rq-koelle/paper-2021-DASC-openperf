@@ -36,7 +36,7 @@ estimate_threshold_time <- function(.trjs_latlon, .debug = FALSE){
     filter(COASTG == FALSE & BEFORE == TRUE )
 
   last_15 <- last_pos %>% tail(n = 15)
-  avg_final_app_speed <- mean(last_15$V_GND_SM)
+  avg_final_app_speed <- mean(last_15$V_GND_SM, na.rm = TRUE)   # for some LSZH arrivals only a few points and smooth NAs
 
   thr_row <- last_pos %>% tail(n = 1) %>%
     mutate(LAT = LAT_THR, LON = LON_THR

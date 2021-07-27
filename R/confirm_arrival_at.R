@@ -10,7 +10,7 @@
 #' @export
 #'
 #' @examples
-confirm_arrival_at <- function(.df, .apt_box, .time_window = 300){
+confirm_arrival_at <- function(.df, .apt_box, .time_window = 500){
   df <- .df %>%
     # extract last (aka oldest) pos reports
     dplyr::mutate(last_4d = map(

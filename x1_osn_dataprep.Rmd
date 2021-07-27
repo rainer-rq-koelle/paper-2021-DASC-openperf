@@ -137,18 +137,19 @@ if(.debug)return(list(meta = meta, arrs = arrs))
 
 ```{r, eval=FALSE}
 # apt <- "EGLL"
-apt <- "EHAM"
+# apt <- "EHAM"
+apt <- "LSZH"
 fns <- list.files(path = paste0("./data-raw/",apt,"/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 
-study_loop(.apt = apt, .fn = fns[1])
+(   tmpp <- study_loop(.apt = apt, .fn = fns[1], .debug = TRUE)  )
 ```
 
 ```{r, message=FALSE}
-apt <- "EHAM"
+apt <- "LSZH"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 #2nd run: fns <- fns[167:185]
 # itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
-fns <- tail(fns,4)
+
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = ..2))
 ```
 
@@ -232,7 +233,7 @@ fns <- list.files(path = paste0("./data-raw/", apt), pattern = paste0(apt,".*\\.
 #apt <- "EGLL"
 apt <- "EHAM"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
-fns <- fns[27:length(fns)]
+fns <- fns[73:length(fns)]
 
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn = ..2))
 ```
