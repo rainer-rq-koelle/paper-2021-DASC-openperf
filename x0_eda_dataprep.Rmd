@@ -148,7 +148,8 @@ tmp <- apdf %>%
          ) %>%
   group_by(APT, YEAR, DOF) %>%
   summarise(ARRS = n(), .groups = "drop") %>%
-  na.omit() 
+  na.omit() %>%
+  mutate(SOURCE = "APDF")
 
 tmp$DOF2 <- tmp$DOF
 lubridate::year(tmp$DOF2) <- 666
@@ -165,8 +166,88 @@ p <- tmp %>%
 p
 ```
 
+### check APDF vs OSN
+
+This requires the meta summary for the study airports crunched.
+
+```{r}
+#apt <- "EGLL"
+#ptn <- paste0(apt, "-.*-meta.csv")
+
+extract_list_of_meta <- function(.pth = here::here("data"), .ptn = "-meta.csv$"){
+ fns <- list.files(path = .pth, pattern = .ptn, full.names = TRUE)
+}
+
+read_meta_file <- function(.fn, .colspec = NULL){
+  
+ what <- .fn %>% stringr::str_split(pattern = "/")
+ what <- what[[1]] %>% tail(1) %>% stringr::str_split(pattern = "-")
+ what_apt <- what[[1]] %>% head(1)
+ what_dof <- paste(what[[1]][2],what[[1]][3],what[[1]][4], sep = "-")
+
+ if(is.null(.colspec)){
+   .colspec <- cols(
+      UID = col_character(),
+      N = col_double(),
+      ADEP = col_character(),
+      ADES = col_character(),
+      START = col_datetime(format = ""),
+      STOP = col_datetime(format = ""),
+      ARR = col_logical(),
+      RWY = col_character()
+  )
+ }
+
+my_meta <- read_csv(file = .fn, col_types = .colspec)
+my_meta <- my_meta %>% 
+  mutate(ICAO = what_apt
+         ,DOF = what_dof) %>%
+  select(ICAO, DOF, dplyr::everything())
+
+#--------- clean -- to do check where double counting happens
+my_meta <- my_meta %>% 
+  group_by(UID) %>% 
+  tidyr::fill(c(START, STOP), .direction = "downup") %>% 
+  dplyr::distinct() %>%
+  ungroup()
+
+return(my_meta)
+}
+
+# test <- read_meta_file(fns[1])
+
+meta<- purrr::map_dfr(.x = fns, .f = ~ read_meta_file(.x) )
+```
+
+```{r}
+tmp2 <- meta %>% 
+  group_by(ICAO, DOF) %>%
+  mutate(DOF = lubridate::ymd(DOF)) %>%
+  summarise(ARRS = sum(ARR == TRUE, na.rm = TRUE), .groups = "drop") %>%
+  mutate(YEAR = lubridate::year(DOF), SOURCE = "OSN") %>%
+  rename(APT = ICAO)
+
+tmp2$DOF2 <- tmp2$DOF
+lubridate::year(tmp2$DOF2) <- 666
+
+tmp %>% bind_rows(tmp2) %>%
+  mutate(
+     MOF   = lubridate::month(DOF)
+    ,GROUP = paste(APT, MOF, SOURCE, sep = "-")
+    ) %>%
+  filter(MOF %in% c(3,5)) %>%
+  
+  ggplot() +
+  geom_line(aes(x = DOF2, y = ARRS, group = GROUP, colour = SOURCE )) +
+  facet_grid(APT ~ YEAR, scales = "free_y") +
+  theme_minimal() +
+  labs(y = NULL, x = NULL) +
+  theme(legend.position = "top")
+  
+```
 
 
+## Working with OSN Trajectory
 
 ```{r}
 ds <- read_feather("./data-raw/EGLL_2019-03-01_history.feather") %>% as_tibble()

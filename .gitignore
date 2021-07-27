@@ -2,8 +2,12 @@
 data-raw/
 data/bins/
 
+# temps files - Windows & Office stuff
+~$*
+
 # some larger data files shared via other means
 data/val-apdf*
+data/x_val-apdf/
 data/*.zip
 
 paper.log
