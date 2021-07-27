@@ -214,7 +214,7 @@ bins <- ds %>% group_by(H3_BIN, RWY) %>%
   mutate(DOF = what_date)
 
 warning(paste0("\nwriting bins for ", what_date, " - ", .apt))
-bin_fn <- paste0("./data/bins/", .apt, "-", what_date, "-bins.csv")
+bin_fn <- paste0("./data/bins/", .apt, "-", what_date, "-bins.csv.gz")
 write_csv(bins, file = bin_fn)
 
 if(.debug) return(list(ds, bins))
@@ -222,15 +222,17 @@ if(.debug) return(list(ds, bins))
 ```
 
 ```{r, eval=FALSE}
-apt <- "EGLL"
-fns <- list.files(path = "./data-raw/", pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
-(rq <- study_index(apt, fns[1]))
+#apt <- "EGLL"
+apt <- "EHAM"
+fns <- list.files(path = paste0("./data-raw/", apt), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+(rq <- study_index(apt, fns[27]))
 ```
 
 ```{r, message=FALSE}
-apt <- "EGLL"
+#apt <- "EGLL"
+apt <- "EHAM"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
-fns <- fns[74:length(fns)]
+fns <- fns[27:length(fns)]
 
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn = ..2))
 ```
