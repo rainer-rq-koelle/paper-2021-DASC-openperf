@@ -149,6 +149,7 @@ apt <- "LSZH"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 #2nd run: fns <- fns[167:185]
 # itr <- expand.grid(APT = apt, FN = fns) %>% as_tibble()
+fns <- fns[51:length(fns)]
 
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = ..2))
 ```
