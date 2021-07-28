@@ -225,16 +225,18 @@ if(.debug) return(list(ds, bins))
 
 ```{r, eval=FALSE}
 #apt <- "EGLL"
-apt <- "EHAM"
+#apt <- "EHAM"
+apt <- "LSZH"
 fns <- list.files(path = paste0("./data-raw/", apt), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 (rq <- study_index(apt, fns[27]))
 ```
 
 ```{r, message=FALSE}
 #apt <- "EGLL"
-apt <- "EHAM"
+#apt <- "EHAM"
+apt <- "LSZH"
 fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
-fns <- fns[73:length(fns)]
+fns <- fns[173:length(fns)]
 
 purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn = ..2))
 ```
