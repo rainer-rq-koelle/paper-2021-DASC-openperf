@@ -1,9 +1,9 @@
 ---
-title: "Democratisation of Performance Monitoring"
+title: "Building Back Better – Democratization of Performance Monitoring with Open Data"
 description: |
-  A new article created using the Distill format.
+  Quick description of article and what can be found here.
 author:
-  - name: Nora Jones 
+  - name: Rainer Koelle 
     url: https://example.com/norajones
     affiliation: Spacely Sprockets
     affiliation_url: https://example.com/spacelysprokets
@@ -17,8 +17,80 @@ csl: ieee.csl
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-Distill is a publication format for scientific and technical writing, native to the web.
-
-Learn more about using Distill for R Markdown at <https://rstudio.github.io/distill>.
-
 This article builds on [@strohmeier_crowdsourced_2021].
+
+# Abstract  {-=""}
+
+TThe COVID-19 The COVID-19 pandemic accelerated the use,
+sharing, and distribution of data on a global basis. Higher levels of
+transparency were achieved with continual updates of pandemic related
+information. The air transportation sector -- while by definition an information
+rich industry -- is a notable exception. While different organizations offered
+aggregated data on air traffic developments on national or airport level,
+complementary data on air traffic movements for further analysis are not
+available publicly. This creates a deadlock between addressing the societal
+needs of monitoring how aviation recovers from the COVID-19 pandemic and
+addresses the aspirational environmental goals. This paper investigates the
+feasibility of utilizing open data for the operational performance monitoring
+at airports. The exploratory work focusses on a subset of the indicators
+proposed under ICAO's Global Air Navigation Plan used to assess the operational
+performance in the arrival phase. A novel approach to characterize and assess
+the arrival flow management and level of traffic synchronization is presented. This
+will allow to evaluate on-going air traffic recovery and identify operational
+bottlenecks. The study is performed as a use-case analysis for three major
+European airports by comparing the observed performance in the months of March
+and May for the successive years 2019, 2020, and 2021. The results demonstrate
+the general feasibility and utility of open data for operational performance
+monitoring. The classical performance measure for the arrival flow are
+determined based on the open trajectory data. A geospatial-temporal evaluation
+support the tracking of traffic synchronisation effort. A higher level of
+transparency therefore available to the interested public, policy
+decision-makers and strategic planners with direct feedback on the recovery and
+actual operational performance. The suitability of the traffic synchronization
+measure and its parameterization requires further validation across a wider set
+of airports and will be iteratively refined.
+
+# Introduction
+
+The COVID19 pandemic
+shifted the focus and attention of political decision-makers and strategic
+planers over the past year. The unprecedented decline of regional and
+international air traffic poses challenges in terms of funding of the air
+transportation system in general and planned air traffic management
+modernization. While it is unclear how today's travel constraints and the
+vaccine roll-out will play out, both airspace users and air traffic service
+providers are committed to "build back better." This will include a higher
+emphasis on operational excellence. Higher levels of operational efficiency are
+considered to be enablers for reduced queueing, both in the airspace and on the
+ground, and lower associated fuel burn and emissions. It will be essential to
+ensure that with increasing traffic levels, inefficiencies are immediately
+tracked and remedied.
+
+Air transportation
+services are by definition an information rich environment. However, today, the
+access and availability of open data for the monitoring and validation of air
+transport /air navigation system performance or related published results of
+studies and research exercises is limited [1][2]. Within this context, crowd collected open
+data gains a higher momentum and visibility. Opensky Network became a key
+resource for open air transport data during the COVID-19 pandemic [3]. Opensky Network provides a global
+flight-by-flight record of observed tracks on a monthly basis for interested
+researchers or practitioners [4]. For detailed studies, the associated
+trajectory data can be accessed via the Network resources. There is an active
+community establishing tools for the extraction and processing of the data.
+Demonstrating the feasibility and utility of using an existing open data source
+to assess the current air transportation system performance, and trace the
+development of the performance levels with returning traffic demand is vital.
+
+The paper follows a data-driven exploratory approach. Based on the
+operational performance indicators promoted by ICAO, a performance monitoring
+toolchain is developed building on the open air transport data. The public
+availability of the data in a near real-time set-up ensures that independent
+validation of observed operational performance is available to policy makers, strategic
+planners, practitioners, and researchers. A novel traffic synchronization
+oriented performance metric is developed. The metric aims to isolate
+operational and airspace related dimensions or inefficiencies. The approach
+will be presented as use-case analysis of three European airports that show
+significant differences in traffic patterns and approach concepts. The analysis
+of the arrival management techniques will support the evaluation of the
+achieved performance levels in terms of ground-based or airspace
+holding/queueing and delay absorption.
