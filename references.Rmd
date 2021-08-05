@@ -44,4 +44,14 @@ OSN Schaefer 2014 [@schafer_osn_2014]
 
 Doc 4444 [@icaodoc44442016]
 
+EC roadmap [@ec_roadmap_greentransport_2011]
+
+airline bailout [@meyer_airline_2020]
+
+lessons learnt bailout [@mirolo_bailoutlessons_2021]
+
+rq & fabio [@koelle_assessing_2021]
+
+spacing [@christien_2017][@christienspacing2019]
+
 ## REFERENCES

@@ -213,9 +213,11 @@ my_meta <- my_meta %>%
 
 return(my_meta)
 }
+```
 
+```{r}
+fns <- extract_list_of_meta()
 # test <- read_meta_file(fns[1])
-
 meta<- purrr::map_dfr(.x = fns, .f = ~ read_meta_file(.x) )
 ```
 
@@ -241,9 +243,10 @@ tmp %>% bind_rows(tmp2) %>%
   geom_line(aes(x = DOF2, y = ARRS, group = GROUP, colour = SOURCE )) +
   facet_grid(APT ~ YEAR, scales = "free_y") +
   theme_minimal() +
-  labs(y = NULL, x = NULL) +
+  labs(y = NULL, x = NULL, colour = NULL) +
   theme(legend.position = "top")
   
+#ggsave("./figures/airport-timeline-2019-2020-2021.png", dpi = 320, height = 6, width = 8)
 ```
 
 
