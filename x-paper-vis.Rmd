@@ -1,0 +1,202 @@
+---
+title: "Untitled"
+author: "PRU"
+date: "30/07/2021"
+output: html_document
+---
+
+```{r}
+ac_db <- read_csv("../paper-2021-DASC-COVID19/data-raw/aircraftDatabase.csv")
+ac_db <- ac_db %>% select(ICAO24 = icao24, REG = registration, TYPE = typecode, CAT = icaoaircrafttype)
+```
+
+```{r}
+fns <- list.files(path = "./data/", pattern = "asma.csv$", full.names = TRUE)
+
+asma_colspec <- cols(
+  .default = col_double(),
+  UID = col_character(),
+  ARR = col_logical(),
+  RWY = col_character(),
+  THR_TIME = col_datetime(format = ""),
+  C40_TIME = col_datetime(format = ""),
+  C50_TIME = col_datetime(format = ""),
+  C100_TIME = col_datetime(format = "")
+)
+
+extract_apt_dof_from_fn <- function(.fn){
+ what <- .fn %>% stringr::str_split(pattern = "/")
+ what <- what[[1]] %>% tail(1) %>% stringr::str_split(pattern = "-")
+ what_apt <- what[[1]] %>% head(1)
+ what_dof <- paste(what[[1]][2],what[[1]][3],what[[1]][4], sep = "-")
+ 
+ what_df <- data.frame(APT = what_apt, DOF = what_dof)
+}
+
+read_asma_summary <- function(.fn, .colspec = asma_colspec){
+  prefix <- extract_apt_dof_from_fn(.fn)
+  ds     <- read_csv(.fn, col_types = .colspec)
+  df <- prefix %>% bind_cols(ds) %>% tibble()
+  return(df)
+}
+
+asma <- fns %>% purrr::map_dfr(.f = read_asma_summary, asma_colspec)
+```
+
+```{r}
+egll <- asma %>% filter(APT == "EGLL")
+
+sect <- c(0, 160, 240, 295, 360)
+
+ggplot(data = egll) +
+  geom_histogram(aes(x = C40_BRG), binwidth = 5) +
+  geom_vline(xintercept = sect)
+
+```
+
+```{r}
+egll <- egll %>% 
+  mutate(C40_SECT = cut(C40_BRG, breaks = sect)) %>% 
+  mutate(ICAO24 = stringr::str_trunc(UID, width = 6, side = "right", ellipsis = "")) %>% 
+  select(UID, DOF, ICAO24, C40_BRG, C40_SECT, RWY, THR_TIME, C40_TIME) %>% 
+  left_join(ac_db) %>% 
+  mutate(CAT2 = stringr::str_replace_all(CAT, "[:digit:]", "")) %>%
+  mutate(TRVL_TIME = difftime(THR_TIME, C40_TIME, units = "min") %>% as.numeric())
+
+ref <- egll %>%
+  group_by(C40_SECT, RWY, CAT2) %>%
+  summarise(N = n(), VALID = sum(!is.na(TRVL_TIME)), REF = quantile(TRVL_TIME, probs = 0.2, na.rm = TRUE)
+            ,.groups = "drop") %>%
+  na.omit()
+
+egll <- egll %>% left_join(ref, by = c("C40_SECT", "RWY", "CAT2"))  
+egll <- egll %>% mutate(ADD_TIME = TRVL_TIME - REF)
+
+egll_asma <- egll %>%
+  group_by(DOF,C40_SECT, RWY, CAT2) %>%
+  summarise(N = n(), across(.cols=c(REF, ADD_TIME), .fns = sum, na.rm = TRUE)
+            , .groups = "drop") %>%
+  na.omit()
+
+tmp <- egll_asma %>% mutate(BIN = lubridate::month(DOF), YEAR = lubridate::year(DOF)) %>%
+  group_by(YEAR, BIN) %>%
+  summarise(across(N:ADD_TIME, sum)) %>%
+  mutate(AVG_ADD_TIME = ADD_TIME / N)
+
+tmp2 <- tmp %>%
+  mutate(APT = "EGLL") %>%
+  select(APT, YEAR, BIN, AVG_ADD_TIME) %>% 
+  knitr::kable()
+tmp2
+
+```
+
+
+
+```{r}
+eham <- asma %>% filter(APT == "EHAM")
+
+sect <- c(-5, 160, 250, 370)
+
+ggplot(data = eham) +
+  geom_histogram(aes(x = C40_BRG), binwidth = 5) +
+  geom_vline(xintercept = sect)
+
+```
+
+```{r}
+egll <- eham
+egll <- egll %>% 
+  mutate(C40_SECT = cut(C40_BRG, breaks = sect)) %>% 
+  mutate(ICAO24 = stringr::str_trunc(UID, width = 6, side = "right", ellipsis = "")) %>% 
+  select(UID, DOF, ICAO24, C40_BRG, C40_SECT, RWY, THR_TIME, C40_TIME) %>% 
+  left_join(ac_db) %>% 
+  mutate(CAT2 = stringr::str_replace_all(CAT, "[:digit:]", "")) %>%
+  mutate(TRVL_TIME = difftime(THR_TIME, C40_TIME, units = "min") %>% as.numeric())
+
+ref <- egll %>%
+  group_by(C40_SECT, RWY, CAT2) %>%
+  summarise(N = n(), VALID = sum(!is.na(TRVL_TIME)), REF = quantile(TRVL_TIME, probs = 0.2, na.rm = TRUE)
+            ,.groups = "drop") %>%
+  na.omit()
+
+egll <- egll %>% left_join(ref, by = c("C40_SECT", "RWY", "CAT2"))  
+egll <- egll %>% mutate(ADD_TIME = TRVL_TIME - REF)
+
+egll_asma <- egll %>%
+  group_by(DOF,C40_SECT, RWY, CAT2) %>%
+  summarise(N = n(), across(.cols=c(REF, ADD_TIME), .fns = sum, na.rm = TRUE)
+            , .groups = "drop") %>%
+  na.omit()
+
+tmp <- egll_asma %>% mutate(BIN = lubridate::month(DOF), YEAR = lubridate::year(DOF)) %>%
+  group_by(YEAR, BIN) %>%
+  summarise(across(N:ADD_TIME, sum)) %>%
+  mutate(AVG_ADD_TIME = ADD_TIME / N)
+
+tmp2 <- tmp %>%
+  mutate(APT = "EHAM") %>%
+  select(APT, YEAR, BIN, AVG_ADD_TIME) 
+
+tmp2 %>% 
+  knitr::kable()
+
+
+```
+
+
+```{r}
+lszh <- asma %>% filter(APT == "LSZH")
+
+sect <- c(0, 50, 110, 175, 260, 320, 365)
+
+ggplot(data = lszh) +
+  geom_histogram(aes(x = C40_BRG), binwidth = 5) +
+  geom_vline(xintercept = sect)
+
+```
+
+```{r}
+egll <- lszh
+egll <- egll %>% 
+  mutate(C40_SECT = cut(C40_BRG, breaks = sect)
+         ,C40_SECT_0 = C40_SECT
+         ,C40_SECT = as.numeric(C40_SECT)
+         ,C40_SECT = ifelse(C40_SECT == 6, 1, C40_SECT))
+
+
+
+egll <- egll %>% 
+  mutate(ICAO24 = stringr::str_trunc(UID, width = 6, side = "right", ellipsis = "")) %>% 
+  select(UID, DOF, ICAO24, C40_BRG, C40_SECT, RWY, THR_TIME, C40_TIME) %>% 
+  left_join(ac_db) %>% 
+  mutate(CAT2 = stringr::str_replace_all(CAT, "[:digit:]", "")) %>%
+  mutate(TRVL_TIME = difftime(THR_TIME, C40_TIME, units = "min") %>% as.numeric())
+
+ref <- egll %>%
+  group_by(C40_SECT, RWY, CAT2) %>%
+  summarise(N = n(), VALID = sum(!is.na(TRVL_TIME)), REF = quantile(TRVL_TIME, probs = 0.2, na.rm = TRUE)
+            ,.groups = "drop") %>%
+  na.omit()
+
+egll <- egll %>% left_join(ref, by = c("C40_SECT", "RWY", "CAT2"))  
+egll <- egll %>% mutate(ADD_TIME = TRVL_TIME - REF)
+
+egll_asma <- egll %>%
+  group_by(DOF,C40_SECT, RWY, CAT2) %>%
+  summarise(N = n(), across(.cols=c(REF, ADD_TIME), .fns = sum, na.rm = TRUE)
+            , .groups = "drop") %>%
+  na.omit()
+
+tmp <- egll_asma %>% mutate(BIN = lubridate::month(DOF), YEAR = lubridate::year(DOF)) %>%
+  group_by(YEAR, BIN) %>%
+  summarise(across(N:ADD_TIME, sum)) %>%
+  mutate(AVG_ADD_TIME = ADD_TIME / N)
+
+tmp2 <- tmp %>%
+  mutate(APT = "EHAM") %>%
+  select(APT, YEAR, BIN, AVG_ADD_TIME) 
+
+tmp2 %>% knitr::kable()
+
+```

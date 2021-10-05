@@ -245,7 +245,7 @@ purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn =
 ## Calculating Spacing results
 
 ```{r}
-.apt <- "EGLL"
+apt <- "EGLL"
 #fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 # dev files
 fns <- list.files(path = paste0("./data-raw/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
@@ -331,6 +331,31 @@ print(gg)
 return(gg)
 }
 
+check_UID <- "407464-BAW34V-2019-03-01-0"
+baw34V <- rq %>% filter(UID == check_UID)
+
+plot_to_go <- function(.trj_binned_2go){
+  df <- .trj_binned_2go
+  gg <- ggplot(data = df) +
+         geom_line(aes(x = TIME_2GO, y = TIME_SEQ)) +
+         labs(subtitle = df$UID
+              , x = "time to landing runway (sec)"
+              , y = "spacing effort overhead (sec)"
+              ) +
+         theme_minimal()
+return(gg)
+}
+
+my_p <- plot_to_go(baw34V)
+my_p
+
+
+ baw34V %>% select(UID, TIME_2GO, TIME_SEQ) %>% mutate(TIME_SEQ2 = TIME_SEQ, TIME_SEQ = zoo::rollmedian(TIME_SEQ2, k = 15, fill = NA, align = "right")) %>% plot_to_go() + geom_abline(intercept = 0, slope = 50/1000, colour = "blue") -> finalvis
+ 
+ ggsave(finalvis, file = "./figures/spacingmetric.png", dpi = 320, width = 8, height = 6)
+ 
+
+# print some h3 bins
 
 library(readr)
 library(tidyverse)
@@ -356,3 +381,5 @@ ggplot() +
 # might throw error - somehow min to pos does not work xlim=c(-1,0) works
 
 ggsave('EGLL-zoom.png', dpi=320)
+
+

@@ -1,9 +1,9 @@
 # Building Back Better – Democratisation of Performance Monitoring with Open Data
 
-This repo is the work space for putting the paper together.
-The paper will deal with measuring operational performance with open data to support decision-making during the COVID19 recovery phase. As traffic increases, it is likely that the system falls back to the "old normal".
+This repo contains the work space for development and reproduction of the paper.
+The article can be found at: https://rainer-rq-koelle.github.io/paper-2021-DASC-openperf/.
 
-It is also planned wrap the work into a distill webpage. But that will be left for the post paper-production.
+The paper deals with establish a toolchain for measuring operational performance with open data and support decision-making during the COVID19 recovery phase. As traffic increases, it is likely that the system falls back to the "old normal" and accordingly means to prioritise and judge on the operational impacts/benefits.
 
 If you have any queries about this work, please do not hesitate to contact Rainer Koelle.
 If you read this, you should know how to contact the author.
