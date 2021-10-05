@@ -331,3 +331,28 @@ print(gg)
 return(gg)
 }
 
+
+library(readr)
+library(tidyverse)
+library(h3)
+
+ds <- read_csv("data/EGLL-2019-03-01-bins.csv")
+
+rq <- ds %>% group_by(H3_BIN) %>% summarise(N = sum(N, na.rm=TRUE))
+
+rq2 <- h3_to_geo_boundary_sf(rq$H3_BIN) %>% 
+  mutate(H3_BIN = rq$H3_BIN, N = rq$N)
+rq2
+
+ggplot() + geom_sf(data = rq2, aes(col = log(N)) ) + scale_colour_viridis_c() + theme_minimal()
+
+ggsave('EGLL-200NM.png', dpi=320)
+
+ggplot() + 
+  geom_sf(data = rq2, aes(fill = log(N)) ) + 
+  scale_fill_viridis_c() + 
+  theme_minimal() + 
+  coord_sf(xlim = c(-1.5, 0.5), ylim = c(51, 52), expand = FALSE)
+# might throw error - somehow min to pos does not work xlim=c(-1,0) works
+
+ggsave('EGLL-zoom.png', dpi=320)
