@@ -21,7 +21,7 @@ This article builds on [@strohmeier_crowdsourced_2021].
 
 # Abstract  {-=""}
 
-TThe COVID-19 The COVID-19 pandemic accelerated the use,
+The COVID-19 The COVID-19 pandemic accelerated the use,
 sharing, and distribution of data on a global basis. Higher levels of
 transparency were achieved with continual updates of pandemic related
 information. The air transportation sector -- while by definition an information
