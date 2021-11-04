@@ -1,0 +1,111 @@
+---
+title: "Technical Note - System Change Assessment - Arrival Management"
+author: "PRU"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  bookdown::pdf_document2   # or word_document2
+bibliography: TN-arrmgt.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+recent research introduces the following:
+
+**minimum time** --> reference flying time
+* notion can be generalized to any point in the arrival airspace
+* discretise the area in the form of a map of cells, each containing the minimum time from this cell to the final approach fix
+* potential issue: does not guarantee a "global minimum" at every point which could influence the calculation of derived metrics (e.g. additional time, spacing deviation)
+  + issue potential shortcuts, can be detemined with Dijkstra shortest past 
+  + option/next steps: machine learning - trajectory clustering ~ associated "reference"
+
+**Additional time**
+Similarly to the minimum time, the notion of additional time of the PRU can also be generalized to any time for a given trajectory. It can simply be defined as the difference between the remaining flying time and the minimum flying time.    
+The additional time represents the remaining delay to absorb: starting from the total amount of delay at the entry of the area and decreasing to zero at final point (a reversed definition could be considered, starting from zero and ending at the total delay).
+
+** Spacing Deviation**    
+
+The definition of spacing we propose relies on the combination of two existing notions: the minimum time introduced earlier and the constant time delay introduced by NASA for airborne spacing applications [13][14]. The constant time delay was introduced to define a spacing deviation with aircraft following same trajectories; it is based on the past positions of the leader aircraft with a given time delay corresponding to the required spacing. This notion can be generalised to any aircraft trajectories.
+Let us consider a pair of consecutive landing aircraft denoted leader and trailer, with s their required time spacing1. Using the constant time delay principle, the spacing deviation (or spacing error) at time t considers the current position of trailer at time t, and the past position of leader at time t – s. Precisely, it is defined as the difference between the respective minimum times from these two positions (see figure below):
+spacing deviation (t) = min time (trailer (t)) –
+min time (leader (t – s))
+This defines a spacing deviation at all times, with no assumption regarding aircraft path/navigation: aircraft may be following same or predefined trajectories, or may be on open vectors.
+
+this concept can be expressed as
+follows: let dtrail and dlead be the distances from the
+current position of the aircraft to the waypoint.
+When the leader reaches the waypoint (dlead=0), the
+spacing error is the difference between the
+remaining distance of the trailing aircraft to the
+waypoint and the desired spacing:
+d_error = d_trail_|(dlead = 0) - d_spacing
+
+taking into account the desired spacing:
+d_error = d_trail - d_lead - d_spacing
+
+
+# Materials and Methods
+
+## Study Data
+
+This study builds on data collected by Opensky Network (https://opensky-network.org/). 
+The Opensky Network community operates a sensor network of more than 3000 receivers across the globe [3]. 
+The crowdsourced data collected by Opensky Network is available to research, non-profit and government organisations
+
+The data was downloaded from Opensky Network making use of the traffic library [21]. 
+The library supports the targeted extraction of trajectories landing and departing from the chosen airports.
+
+<!-- validity check with APDF and flight numbers for study airports? -->
+
+For the collection of ADS-B data and the extraction of arrival runway (RWY) and landing time, we used the traffic Python library [21]. <!-- IS THIS CORRECT? you crunched runways with R/RStudio -->
+
+The traffic library converts the data from OSN to structures wrapping pandas data frames. 
+For the processing of these data frames it provides specialised semantics for aircraft trajectories (e.g., intersection, re-sampling or filtering). 
+Given an ICAO 24-bit identifier, it iterates over trajectories based on contiguous timestamps of data reports.
+
+(ref:example-download) Example of extracting trajectory data from Opensky Network using the
+Python traffic library
+
+Figure \@ref(fig:example-download) shows the code to download one day of traffic departures from and arrivals to EGLL. 
+It keeps only portions within 200 NM from the airport and resamples each trajectory at 1 second before storing in a file.
+
+```{r example-download, fig.cap='(ref:example-download)', fig.align = 'center', out.width="70%"}
+knitr::include_graphics("./figures/traffic-source-code2.png")
+```
+
+Reading in one day of data, e.g. 1. March 2019 for Heathrow (EGLL) provides the following data set:
+
+Rows: 2,834,286
+Columns: 24
+$ timestamp       <dttm> 2019-03-01 05:19:53, 2019-03-01 05:19:54, 2019-03-01 05:19:55,~
+$ alert           <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ~
+$ altitude        <dbl> 40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000, ~
+$ callsign        <chr> "SAA234", "SAA234", "SAA234", "SAA234", "SAA234", "SAA234", "SA~
+$ day             <dttm> 2019-03-01, 2019-03-01, 2019-03-01, 2019-03-01, 2019-03-01, 20~
+$ destination     <chr> "EGLL", "EGLL", "EGLL", "EGLL", "EGLL", "EGLL", "EGLL", "EGLL",~
+$ firstseen       <dttm> 2019-02-28 19:09:12, 2019-02-28 19:09:12, 2019-02-28 19:09:12,~
+$ geoaltitude     <dbl> 39775, 39775, 39775, 39775, 39775, 39775, 39775, 39775, 39775, ~
+$ groundspeed     <dbl> 410, 410, 410, 410, 410, 410, 410, 410, 410, 410, 410, 410, 410~
+$ hour            <dttm> 2019-03-01 05:00:00, 2019-03-01 05:00:00, 2019-03-01 05:00:00,~
+$ icao24          <chr> "00b1fa", "00b1fa", "00b1fa", "00b1fa", "00b1fa", "00b1fa", "00~
+$ lastseen        <dttm> 2019-03-01 06:11:21, 2019-03-01 06:11:21, 2019-03-01 06:11:21,~
+$ latitude        <dbl> 48.86239, 48.86394, 48.86551, 48.86775, 48.86929, 48.87122, 48.~
+$ longitude       <dbl> 2.761182, 2.760104, 2.759086, 2.757568, 2.756512, 2.755244, 2.7~
+$ onground        <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ~
+$ origin          <chr> "FAGM", "FAGM", "FAGM", "FAGM", "FAGM", "FAGM", "FAGM", "FAGM",~
+$ spi             <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ~
+$ squawk          <chr> "6754", "6754", "6754", "6754", "6754", "6754", "6754", "6754",~
+$ track           <dbl> 336.1226, 336.1226, 336.1226, 336.1226, 336.1226, 336.1226, 336~
+$ vertical_rate   <dbl> 0, 0, 64, 0, 0, 0, 0, 0, 64, 64, 0, 0, 0, 0, 0, 0, 64, 64, 64, ~
+$ track_unwrapped <dbl> 336.1226, 336.1226, 336.1226, 336.1226, 336.1226, 336.1226, 336~
+$ start           <dttm> 2019-03-01 03:53:51, 2019-03-01 03:53:51, 2019-03-01 03:53:51,~
+$ stop            <dttm> 2019-03-01 06:11:21, 2019-03-01 06:11:21, 2019-03-01 06:11:21,~
+$ distance        <dbl> 199.9605, 199.8608, 199.7612, 199.6180, 199.5187, 199.3964, 199~
+
+# Future Work
+
+## Methodology
+
+The application of the additional time/distance concept is based on the tesselation of the airspace volume around the arrival airport. The associated reference flying times/distances to the threshold are built based on the observed data.

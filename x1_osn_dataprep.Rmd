@@ -245,7 +245,8 @@ purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_index(.apt = ..1, .fn =
 ## Calculating Spacing results
 
 ```{r}
-apt <- "EGLL"
+apt  <- "EGLL"
+.apt <- apt
 #fns <- list.files(path = paste0("./data-raw/",apt, "/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
 # dev files
 fns <- list.files(path = paste0("./data-raw/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
@@ -383,3 +384,10 @@ ggplot() +
 ggsave('EGLL-zoom.png', dpi=320)
 
 
+## ----------------------------------
+# Getting some ideas about interarrival rates
+
+used for EGLL, 2019-03-01
+
+asma %>% group_by(RWY) %>% arrange(THR_TIME) %>% mutate(TSEP_THR = lead(THR_TIME) - THR_TIME) %>% filter(TSEP_THR <= 2500) %>% ggplot() + geom_step(mapping = aes(x = THR_TIME, y = TSEP_THR), size = 0.2) + geom_hline(yintercept = c(60, 120, 180, 240), colour = "red", linetype = "dashed") + facet_wrap(. ~ RWY, nrow = 2) + ylim(0, 300) + labs(subtitle = paste(.apt, what_date, sep = " - "), title = "Interarrival sequence, time difference in seconds over threshold", x = NULL, y = NULL) + scale_x_datetime(labels = scales::date_format("%H:%M"))+ theme_minimal()
+> ggsave("./figures/EGLL-arrival-sequence-01.png")
