@@ -77,6 +77,7 @@ knitr::include_graphics("./figures/traffic-source-code2.png")
 
 Reading in one day of data, e.g. 1. March 2019 for Heathrow (EGLL) provides the following data set:
 
+<!-- 
 Rows: 2,834,286
 Columns: 24
 $ timestamp       <dttm> 2019-03-01 05:19:53, 2019-03-01 05:19:54, 2019-03-01 05:19:55,~
@@ -103,9 +104,110 @@ $ track_unwrapped <dbl> 336.1226, 336.1226, 336.1226, 336.1226, 336.1226, 336.12
 $ start           <dttm> 2019-03-01 03:53:51, 2019-03-01 03:53:51, 2019-03-01 03:53:51,~
 $ stop            <dttm> 2019-03-01 06:11:21, 2019-03-01 06:11:21, 2019-03-01 06:11:21,~
 $ distance        <dbl> 199.9605, 199.8608, 199.7612, 199.6180, 199.5187, 199.3964, 199~
+-->
+
+(ref:osn-example) Input data example - Opensky-Network and Traffic library
+
+```{r osn-example, fig.cap='(ref:osn-example)', fig.align = 'center', out.width="70%"}
+knitr::include_graphics("./figures/EGLL-OSN-data-example.png")
+```
+
+Fig. \@ref(fig:osn-example) shows a snapshot of the trajectory data extracted from Opensky-Network.
+The *Traffic* library supports the extraction of these position data points providing utilities for data pre-processing.
+Next to the fields track_unwrapped and distance the data elements reflect the state vector positions associated to a flight.
+For the purpose of this study the key fields are:
+
+* ....
+
+## Inter-arrival Sequences
+
+(ref:EGLL-seq-00) EGLL - inter-arrival sequence - all day
+
+```{r EGLL-seq-00, fig.cap='(ref:EGLL-seq-00)', fig.align = 'center', out.width="70%"}
+knitr::include_graphics("./figures/EGLL-arrival-sequence-00.png")
+```
+
+(ref:EGLL-seq-01) EGLL - inter-arrival sequence - cut-off threshold identification
+
+```{r EGLL-seq-01, fig.cap='(ref:EGLL-seq-01)', fig.align = 'center', out.width="70%"}
+knitr::include_graphics("./figures/EGLL-arrival-sequence-01.png")
+```
+
+(ref:EGLL-seq-box) EGLL - inter-arrival sequence - cut-off threshold identification
+
+```{r EGLL-seq-box, fig.cap='(ref:EGLL-seq-box)', fig.align = 'center', out.width="70%"}
+knitr::include_graphics("./figures/EGLL-arrival-sequence-box.png")
+```
+
+<!-- ---------------- USE-CASE ANALYSIS - RESULTS--------------------------- -->
+
+# Use-Case Analysis
+
+
+
+
+<!-- ---------------- FUTURE WORK ------------------------------------------ -->
 
 # Future Work
 
 ## Methodology
 
+### tbd
+
+### Tesselation
+
 The application of the additional time/distance concept is based on the tesselation of the airspace volume around the arrival airport. The associated reference flying times/distances to the threshold are built based on the observed data.
+
+### Sequencing
+
+This initial implementation focusses on inter-arrival sequencing. 
+Conceptually, this reflects single-mode operations, and may thus ignore arrival-departure-arrival sequences.
+
+The selected set of airports are characterised by either single-mode runway operations or strong arrival banks.
+In that respect a potential higher cut-off threshold can include intermixed departures.
+The latter becomes more relevant for aerodromes with mixed mode operations.
+
+Future validation work should also address 
+
+* cut-off value 
+* intermixed departures - accounting for the start of the take-off roll and clearing of the runway of a potential preceeding departure.
+
+
+## Data - Data Processing
+
+This study demonstrates the general feasibility of the approach.
+As part of the **Reference Trajectory** project of PRU, high fidelity data of Opensky-Network has been used for this study.
+
+The current set-up is a limitation.     
+Given the chosen range of 200NM the data pro-processing step is prohibitive for large-scale application at the time being. 
+The download duration and extraction of the desired trajectory for a single day ranges between 4-7 hours.
+
+As a potential work-around it is foreseen to evaluate the use of the lower fidelity data from NM for the initial stage of the assessment horizon (e.g. 100-200NM).    
+This might introduce higher levels of uncertainty about the applied sequencing methods and travelled distances.
+
+
+
+## Conclusions
+
+This use-case study aimed at establishing a prototype for the assessment of performance benefits of trajectory-based operations for the arrival (flow) management. 
+
+The study kicks off identifying associated performance objectives and develops the concept of spacing deviation and sequencing effort. These concepts are developed on the basis of the operational concept and on-going research and further developed towards a first performance metric.
+
+* what was done >>>>>>>>>
+
+* benefits of approach >>>>>>>>>>
+
+* drawback/weaknesses >>>>>>>>>
+
+The previous section identified a series of next steps. 
+These steps revolve around refining the data preparation and data-analytical process.
+A key take-away is the further validation of the approach and performance metric algorithm.
+The latter is planned to be conducted under the umbrella of the US/EU Study.
+There is room to also engage in a stakeholder dialogue with a subset of service providers based on previous deployment of novel arrival techniques/concepts.
+
+<!-- note: address some stakeholder complaints about ASMA -->
+
+This work is also an input to the wider Open Data Initiative of the PRC and the **Open Flight Table and Reference Trajectory** project.
+It is planned to package the associated software / analytical modules as Open Software to enable other researchers and interested experts to reproduce and verify the findings of this study and support the further development of the approach.
+
+The work may be also included in the performance framework of the EUROCONTROL Performance Review System upon PRC approval.

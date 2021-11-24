@@ -18,6 +18,7 @@ library(sftrack)
 library(geosphere)
 library(trrrj)
 library(h3)
+#library(ggplot2)
 
 source("./R/make_nice_names_trafficlib.R")
 source('./R/make_unique_id.R')
@@ -159,7 +160,7 @@ purrr::pmap(.l = list(apt = apt, fn = fns), .f = ~ study_loop(.apt = ..1, .fn = 
 Geographic indexing
 
 ```{r}
-study_index <- function(.apt, .fn, .debug = FALSE){
+study_index <- function(.apt, .fn, .debug = FALSE, .write_bins = TRUE){
   
 # ---------------------- read in airport data --------------------------------  
 aip <- readr::read_csv("./data/aip.csv") %>%
@@ -178,6 +179,7 @@ ldgs <- readr::read_csv( asma_fn
                                           )
                         )
 ldgs <- ldgs %>% left_join(aip, by = "RWY")
+
 # ---------------------- load trajectory data --------------------------------
 ds <- read_feather(.fn) %>% as_tibble()
 ds <- ds %>%
@@ -206,6 +208,7 @@ ds <- ds %>%
 # ---------------------- geographic indexing
 ds <- ds %>%
    mutate(H3_BIN = geo_to_h3(c(LAT, LON), res = 8))
+
 bins <- ds %>% group_by(H3_BIN, RWY) %>%
    summarise( N = n()
              ,MIN_DIST_2GO = min(DIST_2GO) , MIN_TIME_2GO = min(TIME_2GO)
@@ -215,9 +218,11 @@ bins <- ds %>% group_by(H3_BIN, RWY) %>%
              ,.groups = "drop") %>%
   mutate(DOF = what_date)
 
-warning(paste0("\nwriting bins for ", what_date, " - ", .apt))
-bin_fn <- paste0("./data/bins/", .apt, "-", what_date, "-bins.csv.gz")
-write_csv(bins, file = bin_fn)
+if(.write_bins){
+  warning(paste0("\nwriting bins for ", what_date, " - ", .apt))
+  bin_fn <- paste0("./data/bins/", .apt, "-", what_date, "-bins.csv.gz")
+  write_csv(bins, file = bin_fn)
+}
 
 if(.debug) return(list(ds, bins))
 }
@@ -391,3 +396,139 @@ used for EGLL, 2019-03-01
 
 asma %>% group_by(RWY) %>% arrange(THR_TIME) %>% mutate(TSEP_THR = lead(THR_TIME) - THR_TIME) %>% filter(TSEP_THR <= 2500) %>% ggplot() + geom_step(mapping = aes(x = THR_TIME, y = TSEP_THR), size = 0.2) + geom_hline(yintercept = c(60, 120, 180, 240), colour = "red", linetype = "dashed") + facet_wrap(. ~ RWY, nrow = 2) + ylim(0, 300) + labs(subtitle = paste(.apt, what_date, sep = " - "), title = "Interarrival sequence, time difference in seconds over threshold", x = NULL, y = NULL) + scale_x_datetime(labels = scales::date_format("%H:%M"))+ theme_minimal()
 > ggsave("./figures/EGLL-arrival-sequence-01.png")
+
+
+
+# PRC Technical Note
+
+Load and clean trajectory
+
+* pick test/development day
+
+
+```{r}
+apt <- "EGLL"
+# apt <- "EHAM"
+# apt <- "LSZH"
+# fns <- list.files(path = paste0("./data-raw/",apt,"/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+
+fns <- list.files(path = "./data-raw/", full.names = TRUE)
+
+ds   <- read_feather(fns[1])
+
+(   arrs <- study_index(.apt = apt, .fn = fns[1], .debug = TRUE, .write_bins = FALSE)  )
+```
+
+```{r}
+ds <- arrs[[1]]
+bins <- arrs[[2]]
+
+inter_arrival <- ds %>% 
+  filter(TYPE == "THR") %>% 
+  group_by(RWY) %>%
+  arrange(TIME) %>%
+  mutate( SEQ_ID  = row_number()
+         ,T_TRAIL = lead(TIME) - TIME )
+```
+
+
+WARNING - TO DO - NEED BINS based on all data!
+
+
+```{r}
+inter_arrival %>%
+  ggplot() +
+  geom_step(aes(x = TIME, y = T_TRAIL)) +
+  scale_x_datetime(labels = scales::date_format("%H:%M")) +
+  facet_wrap(. ~RWY) +
+  labs( title = "EGLL - inter-arrival sequence"
+       ,subtitle = "01-03-2019, time in UTC" 
+       ,x = NULL, y = "time trailing [s]") +
+  theme_minimal()
+
+##ggsave("./figures/EGLL-arrival-sequence-00.png", dpi = 320, width = 8, height = 6)
+```
+
+boxplot for threshold - first impression
+
+inter_arrival %>% 
+  filter(T_TRAIL <= 300) %>% 
+  ggplot() + 
+    geom_boxplot(aes(x = RWY, y = T_TRAIL)) + 
+    scale_y_continuous(limits = c(0,300)) + 
+    labs(    title = "EGLL - inter-arrival sequence spread"
+        , subtitle = "01-03-2019, time trailing <= 300 sec"
+        , x = "arrival runway", y = "time trailing [s]"
+        ) + 
+    theme_minimal()
+
+##ggsave("./figures/EGLL-arrival-sequence-box.png", dpi = 320, width = 8, height = 6)
+
+spacing deviation (t) = min time (trailer (t)) – min time (leader (t – s))
+
+develop function for lead-trailing time/distance calc
+--> inter_arrival %>% top_n(n = -3, wt = T_TRAIL) check for some min examples
+
+```{r}
+# pick leader-follower pair
+# note T_TRAIL is actually T_AHEAD := time diff from leader landing to trailer
+# e.g. RWY27L SEQ_ID 76 & 77
+
+cut_off <- 240   
+couples <- inter_arrival %>%
+  mutate(SEQ_UID_F = case_when(T_TRAIL <= cut_off ~ lead(UID)
+                              ,TRUE ~ as.character(NA))) %>%
+  #--- remove flights with only remote follower
+  filter( !is.na(SEQ_UID_F) )
+```
+
+rq <- couples[1,]
+
+add_bin_mins <- function(.trj, .bins){
+  trj <- .trj %>%
+    left_join(.bins %>% select(H3_BIN, RWY, MIN_DIST_2GO, MIN_TIME_2GO)
+              , by = c("RWY", "H3_BIN"))
+  return(trj)
+}
+
+leader <- ds %>% filter(UID == rq$UID) %>% 
+  add_bin_mins(bins) %>%
+  select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO)
+  
+trailer<- ds %>% filter(UID == rq$SEQ_UID_F) %>% 
+  add_bin_mins(bins) %>%
+  select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO) %>% 
+  mutate(TIME_WARP = TIME - rq$T_TRAIL)  %>%
+  rename(SEQ_UID = UID, SEQ_DIST_2GO = DIST_2GO, SEQ_TIME_2GO = TIME_2GO
+        ,SEQ_MIN_DIST_2GO = MIN_DIST_2GO, SEQ_MIN_TIME_2GO = MIN_TIME_2GO)
+
+spacedev <- leader %>% 
+  left_join(trailer, by = c("TIME" = "TIME_WARP", "RWY")) %>% 
+  mutate(MIN_TIME_OFF = MIN_TIME_2GO - SEQ_MIN_TIME_2GO
+       , MIN_DIST_OFF = MIN_DIST_2GO - SEQ_MIN_DIST_2GO
+       , DIST_OFF     = DIST_2GO - SEQ_DIST_2GO) %>% 
+  select(UID, SEQ_UID, MIN_TIME_OFF, MIN_DIST_OFF, DIST_OFF, everything())
+
+
+# clean with sliding window - slider
+
+## TODO 
+* wrap this in function
+* reverse presentation, i.e. set index 0 = max(TIME)
+* add slider smooth
+
+spacedev %>% ggplot() + geom_line(aes(x = TIME, y = MIN_DIST_OFF))
+spacedev %>% ggplot() + geom_line(aes(x = TIME, y = TIME_SPACE))
+
+rqq <- spacedev %>% 
+  mutate(TIME_SPACE = slider::slide_dbl(MIN_TIME_OFF, median, .before = 3, .after = 3))
+<!-- plot it -->  
+rqq %>% ggplot() + geom_line(aes(x = TIME, y = TIME_SPACE))
+
+
+
+
+
+
+
+
