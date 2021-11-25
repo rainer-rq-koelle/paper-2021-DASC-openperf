@@ -11,6 +11,26 @@ bibliography: TN-arrmgt.bib
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+<!-- --------------------------------------------------------------------------
+Outputs:
+* PRC Briefing Paper/cover  deconflict Technical Note with stuff that cannot be published, i.e. “timeline” & attempts, selection of use-case
+* (this) Technical Note
+-------------------------------------------------------------------------   -->
+
+
+# Introduction
+
+## Overview
+
+## Structure of this report
+
+# Background
+*	Trajectory management = core concept of operational concepts and future developments, strategic phase through operations
+*	Arrival management = AMAN, extended AMAN
+  +	Related concepts: runway pressure, classical vectoring/point merge, …. en-route delay absorption
+*	Previous/existing work
+
+<!-- -------------------- move to where it belongs & rewrite --------------- -->
 
 recent research introduces the following:
 
@@ -45,8 +65,26 @@ d_error = d_trail_|(dlead = 0) - d_spacing
 taking into account the desired spacing:
 d_error = d_trail - d_lead - d_spacing
 
+<!-- --------------------- END TO BE MOVED AND REWRITTEN ------------------- -->
+
+# Conceptual Model (could be section of Method)
+
+*	“performance measurement” – performance objectives
+*	Geo-spatial ASMA concept  ~ efficiency := delta (actual travel time/distance – reference travel/distance)
+*	Leader/follower vs need to space
+*	Smoothing and congestion
+*	Runway pressure vs threshold demand (use throughput vs US threshold)
+
 
 # Materials and Methods
+
+*	Potential data sources / short comings: 
+  +	APDF – nope limited to milestones & exclusive temporal assessment, 
+  + NM model 3 – okish, however, previous / current work on VFE show-cases limitations --> desire to have higher fidelity trajectory
+  + Open-data trajectory
+*	Other data sources used for the validation of the open 
+*	Data preparation/workflow
+
 
 ## Study Data
 
@@ -139,10 +177,30 @@ knitr::include_graphics("./figures/EGLL-arrival-sequence-01.png")
 knitr::include_graphics("./figures/EGLL-arrival-sequence-box.png")
 ```
 
+
+## Spacing Deviation
+
+(ref:EGLL-spacedev) EGLL - spacing deviation - example 20 flights
+
+```{r EGLL-spacedev, fig.cap='(ref:EGLL-spacedev)', fig.align = 'center', out.width="70%"}
+knitr::include_graphics("./figures/EGLL-spacing-deviation-sm15-20.png")
+```
+
+Fig, \@ref(fig:EGLL-spacedev) shows an example of the development of the spacing deviation of 20 random arrival flights. 
 <!-- ---------------- USE-CASE ANALYSIS - RESULTS--------------------------- -->
 
 # Use-Case Analysis
 
+*	Discussion of limitations and/or set-up <----> check again with Theo whether we can get some data on “spaced flights”; check with SDM (also US/EU)
+*	Use-case description; motivate timeframe and chosen airports
+* Exploratory steps
+  + Spacing heatmap
+  + ASMA holding time/NMs vs throughput – peak/non-peak
+* Tbd
+  + “results” / use-case observations & discussion
+
+* Towards a spacing metric
+  + Potential proposal for (a) metric(s) to measure performance objectives
 
 
 
@@ -188,6 +246,33 @@ This might introduce higher levels of uncertainty about the applied sequencing m
 
 
 ## Conclusions
+
+### Overview and major findings
+
+*	Demonstration of feasibility – general feasibility and trajectory processing and data analytical capability
+o	Think about marketing open perf. Trajectory: This study falls into the wider scope of establishing open performance trajectory & flight table 
+*	Capability – whatever we do ~ operational performance monitoring will build on trajectory data/capability; potential use for FE CAP, SAF
+*	ENV = operational excellence = less fuel burn/CO2 (and non-CO2 GHG)
+
+###	Limitations
+
+*	This Technical Note summarises the approach, data-preparatory steps, and initial analysis on the basis of a use-case --> findings need to be validated on a wider sample 
+*	Capability vs processing power
+
+###	Next steps
+
+*	Technical Implementation: “move away from desktop research” (processing power/capability ~ data volume): ref trajectory, processing modules, data analytics D+1
+*	Technical Validation
+  +	Expansion of use-case airports
+  +	Validation of approach in the context of joint work with US FAA/ATO; input to US/EU, ICAO GIPEG, and multi-national benchmarking.
+*	Operational Validation
+*	Consultation with SJU/SDM, tracking of demonstration projects and/or deployment
+*	Consultation with operational experts 
+
+###	Further research
+
+* interplay synchronisation and traffic flow management; application of machine-learning techniques
+
 
 This use-case study aimed at establishing a prototype for the assessment of performance benefits of trajectory-based operations for the arrival (flow) management. 
 

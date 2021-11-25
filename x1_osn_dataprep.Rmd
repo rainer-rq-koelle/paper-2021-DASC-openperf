@@ -414,7 +414,8 @@ apt <- "EGLL"
 
 fns <- list.files(path = "./data-raw/", full.names = TRUE)
 
-ds   <- read_feather(fns[1])
+# do not use this right now
+# ds_raw   <- read_feather(fns[1])
 
 (   arrs <- study_index(.apt = apt, .fn = fns[1], .debug = TRUE, .write_bins = FALSE)  )
 ```
@@ -449,7 +450,7 @@ inter_arrival %>%
 ##ggsave("./figures/EGLL-arrival-sequence-00.png", dpi = 320, width = 8, height = 6)
 ```
 
-boxplot for threshold - first impression
+<!--  boxplot for threshold - first impression --------------------------------
 
 inter_arrival %>% 
   filter(T_TRAIL <= 300) %>% 
@@ -463,6 +464,7 @@ inter_arrival %>%
     theme_minimal()
 
 ##ggsave("./figures/EGLL-arrival-sequence-box.png", dpi = 320, width = 8, height = 6)
+---------------------------------------------------------------------------- --> 
 
 spacing deviation (t) = min time (trailer (t)) – min time (leader (t – s))
 
@@ -479,11 +481,12 @@ couples <- inter_arrival %>%
   mutate(SEQ_UID_F = case_when(T_TRAIL <= cut_off ~ lead(UID)
                               ,TRUE ~ as.character(NA))) %>%
   #--- remove flights with only remote follower
-  filter( !is.na(SEQ_UID_F) )
+  filter( !is.na(SEQ_UID_F) ) %>%
+  ungroup() %>%
+  select(UID, SEQ_UID_F, everything()) 
 ```
 
-rq <- couples[1,]
-
+```{r}
 add_bin_mins <- function(.trj, .bins){
   trj <- .trj %>%
     left_join(.bins %>% select(H3_BIN, RWY, MIN_DIST_2GO, MIN_TIME_2GO)
@@ -491,42 +494,106 @@ add_bin_mins <- function(.trj, .bins){
   return(trj)
 }
 
-leader <- ds %>% filter(UID == rq$UID) %>% 
-  add_bin_mins(bins) %>%
-  select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO)
+
+calc_pairwise_spacing <- function(.uid, .seq_uid, .ds, .bins = bins){
+
+  leader <- .ds %>% filter(UID == .uid) %>% 
+    add_bin_mins(.bins) %>%
+    select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO)
   
-trailer<- ds %>% filter(UID == rq$SEQ_UID_F) %>% 
-  add_bin_mins(bins) %>%
-  select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO) %>% 
-  mutate(TIME_WARP = TIME - rq$T_TRAIL)  %>%
-  rename(SEQ_UID = UID, SEQ_DIST_2GO = DIST_2GO, SEQ_TIME_2GO = TIME_2GO
-        ,SEQ_MIN_DIST_2GO = MIN_DIST_2GO, SEQ_MIN_TIME_2GO = MIN_TIME_2GO)
+  trailer<- .ds %>% filter(UID == .seq_uid) %>% 
+    add_bin_mins(.bins) %>%
+    select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO) %>% 
+    mutate(TIME_WARP = TIME - rq$T_TRAIL)  %>%
+    rename(SEQ_UID = UID, SEQ_DIST_2GO = DIST_2GO, SEQ_TIME_2GO = TIME_2GO
+          ,SEQ_MIN_DIST_2GO = MIN_DIST_2GO, SEQ_MIN_TIME_2GO = MIN_TIME_2GO)
 
-spacedev <- leader %>% 
-  left_join(trailer, by = c("TIME" = "TIME_WARP", "RWY")) %>% 
-  mutate(MIN_TIME_OFF = MIN_TIME_2GO - SEQ_MIN_TIME_2GO
-       , MIN_DIST_OFF = MIN_DIST_2GO - SEQ_MIN_DIST_2GO
-       , DIST_OFF     = DIST_2GO - SEQ_DIST_2GO) %>% 
-  select(UID, SEQ_UID, MIN_TIME_OFF, MIN_DIST_OFF, DIST_OFF, everything())
+  spacedev <- leader %>% 
+    left_join(trailer, by = c("TIME" = "TIME_WARP", "RWY")) %>% 
+    mutate(MIN_TIME_OFF = MIN_TIME_2GO - SEQ_MIN_TIME_2GO
+         , MIN_DIST_OFF = MIN_DIST_2GO - SEQ_MIN_DIST_2GO
+         , DIST_OFF     = DIST_2GO - SEQ_DIST_2GO
+         , STEP = row_number()) %>% 
+    select(UID, SEQ_UID, STEP, MIN_TIME_OFF, MIN_DIST_OFF, DIST_OFF, everything())
 
+return(spacedev)
+}
+
+#' Smoothing function 
+#' wrapper for slider::slide()
+
+roll_median <- function(.df, .var, .whs, .target_var){
+  df <- .df %>% 
+    mutate(
+     {{.target_var}} := slider::slide_dbl({{.var}}, median, .before = whs, .after = whs)
+  )
+}
+
+```
 
 # clean with sliding window - slider
 
-## TODO 
-* wrap this in function
-* reverse presentation, i.e. set index 0 = max(TIME)
-* add slider smooth
+rq  <- couples[1,]
+spd <- calc_pairwise_spacing(rq$UID, rq$SEQ_UID_F, ds)
 
-spacedev %>% ggplot() + geom_line(aes(x = TIME, y = MIN_DIST_OFF))
-spacedev %>% ggplot() + geom_line(aes(x = TIME, y = TIME_SPACE))
+spd %>% ggplot() + geom_line(aes(x = TIME, y = MIN_DIST_OFF))
+spd %>% ggplot() + geom_line(aes(x = TIME, y = TIME_SPACING))
+spd %>% ggplot() + geom_line(aes(x = STEP, y = DIST_OFF))
 
-rqq <- spacedev %>% 
-  mutate(TIME_SPACE = slider::slide_dbl(MIN_TIME_OFF, median, .before = 3, .after = 3))
+# window half size: before and after
+whs <- 9
+rqq <- spd %>% 
+  mutate(
+     TIME_SPACING = slider::slide_dbl(MIN_TIME_OFF, median, .before = whs, .after = whs)
+    ,DIST_SPACING = slider::slide_dbl(MIN_DIST_OFF, median, .before = whs, .after = whs)
+  )
 <!-- plot it -->  
-rqq %>% ggplot() + geom_line(aes(x = TIME, y = TIME_SPACE))
+rqq %>% 
+  ggplot() + 
+  #  geom_line(aes(x = STEP, y = TIME_SPACING), colour = "blue") + 
+    geom_line(aes(x = STEP, y = DIST_SPACING)) +
+    theme_minimal()
+
+
+loop over all couples
+
+```{r}
+spd <- couples %>% 
+  pmap_dfr(.f = ~ calc_pairwise_spacing(..1, ..2, ds))
+```
+
+PROBLEM LINKED TO NA ins join/mapping
+> group_data(rqq)
+# A tibble: 1,204 x 4
+   UID                         SEQ_UID                     RWY         .rows
+   <chr>                       <chr>                       <chr> <list<int>>
+ 1 00b1fa-SAA234-2019-03-01-0  a8cffd-UAL110-2019-03-01-0  27L       [3,038]
+ 2 00b1fa-SAA234-2019-03-01-0  NA                          27L       [1,040]
+ 3 010154-MSR777-2019-03-01-0  407535-BAW697V-2019-03-01-0 27L       [2,263]
+ 4 010154-MSR777-2019-03-01-0  NA                          27L         [793]
+ 5 0101b6-MSR779-2019-03-01-0  4008f2-SHT9C-2019-03-01-0   27R       [2,381]
+ 6 0101b6-MSR779-2019-03-01-0  NA                          27R       [1,933]
+ 7 0200eb-RAM800F-2019-03-01-0 4007f6-BAW168-2019-03-01-0  27R       [2,332]
+ 8 0200eb-RAM800F-2019-03-01-0 NA                          27R         [831]
+ 9 02a18e-TAR790-2019-03-01-0  4ac9e5-SAS527-2019-03-01-0  27R       [2,146]
+10 02a18e-TAR790-2019-03-01-0  NA                          27R         [790]
+# ... with 1,194 more rows
 
 
 
+
+```{r}
+rqq <- spd %>% 
+  group_by(UID, SEQ_UID, RWY) %>% 
+  roll_median(MIN_DIST_OFF, 15, DIST_SPACING) %>% 
+  mutate(GID = cur_group_id()) %>% select(GID, everything())
+
+rqq %>% filter(GID <=20) %>%
+  ggplot() +
+  geom_line(aes(x = STEP, y = DIST_SPACING, group = GID, colour = GID)) +
+    theme_minimal()
+## ggsave("./figures/EGLL-spacing-deviation-sm15-20.png", dpi = 320, width = 8, height = 6)
+```
 
 
 
