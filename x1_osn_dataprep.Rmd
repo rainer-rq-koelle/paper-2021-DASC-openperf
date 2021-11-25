@@ -585,7 +585,9 @@ PROBLEM LINKED TO NA ins join/mapping
 ```{r}
 rqq <- spd %>% 
   group_by(UID, SEQ_UID, RWY) %>% 
-  roll_median(MIN_DIST_OFF, 15, DIST_SPACING) %>% 
+  roll_median(MIN_DIST_OFF, 15, DIST_SPACING) %>%
+  roll_median(MIN_TIME_OFF, 15, TIME_SPACING) %>%
+  roll_median(DIST_OFF, 15, DIST_LF) %>%
   mutate(GID = cur_group_id()) %>% select(GID, everything())
 
 rqq %>% filter(GID <=20) %>%
@@ -596,6 +598,29 @@ rqq %>% filter(GID <=20) %>%
 ```
 
 
+```{r}
+#tmp <- rqq %>% filter(GID <= 20, STEP %in% seq(from = 1, to = 3600, by = 5))
+tmp <- rqq %>% filter(GID <= 20) %>% mutate(STEP = STEP %/% 5)
 
+tmp %>% filter(STEP <= 300) %>%
+  ggplot() +
+    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+```
 
+```{r}
+tmp %>% filter(STEP >= 300, 600 <= STEP) %>%
+  ggplot() +
+    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+```
 
+```{r}
+tmp %>% filter(STEP >= 600, 900 <= STEP ) %>%
+  ggplot() +
+    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+``` 
+
+```{r}
+tmp %>% filter(STEP <= 3000, STEP >= 2700) %>%
+  ggplot() +
+    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+```
