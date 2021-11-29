@@ -495,7 +495,7 @@ add_bin_mins <- function(.trj, .bins){
 }
 
 
-calc_pairwise_spacing <- function(.uid, .seq_uid, .ds, .bins = bins){
+calc_pairwise_spacing <- function(.uid, .seq_uid, .t_trail , .ds, .bins = bins){
 
   leader <- .ds %>% filter(UID == .uid) %>% 
     add_bin_mins(.bins) %>%
@@ -504,7 +504,7 @@ calc_pairwise_spacing <- function(.uid, .seq_uid, .ds, .bins = bins){
   trailer<- .ds %>% filter(UID == .seq_uid) %>% 
     add_bin_mins(.bins) %>%
     select(UID, TIME, RWY, DIST_2GO, TIME_2GO, MIN_DIST_2GO, MIN_TIME_2GO) %>% 
-    mutate(TIME_WARP = TIME - rq$T_TRAIL)  %>%
+    mutate(TIME_WARP = TIME - .t_trail)  %>%
     rename(SEQ_UID = UID, SEQ_DIST_2GO = DIST_2GO, SEQ_TIME_2GO = TIME_2GO
           ,SEQ_MIN_DIST_2GO = MIN_DIST_2GO, SEQ_MIN_TIME_2GO = MIN_TIME_2GO)
 
@@ -525,11 +525,14 @@ return(spacedev)
 roll_median <- function(.df, .var, .whs, .target_var){
   df <- .df %>% 
     mutate(
-     {{.target_var}} := slider::slide_dbl({{.var}}, median, .before = whs, .after = whs)
+     {{.target_var}} := slider::slide_dbl({{.var}}, median, .before = .whs, .after = .whs)
   )
 }
 
 ```
+
+<!-- DEVELOPMENT VERSION: spd <- read_csv("data-raw/xstuff/spd-EGLL-01.csv.gz") 
+------------------------------------------------------------------------- -->
 
 # clean with sliding window - slider
 
@@ -583,44 +586,210 @@ PROBLEM LINKED TO NA ins join/mapping
 
 
 ```{r}
-rqq <- spd %>% 
+# smoothing rolling window halfspan
+whs <- 45
+
+rq_smooth <- c(seq(1,599,1), seq(600, 1199, 5), seq(from = 1200, to = 4000, by = 10))
+
+rqq <- spd %>%
+  filter(STEP %in% rq_smooth) %>%
   group_by(UID, SEQ_UID, RWY) %>% 
-  roll_median(MIN_DIST_OFF, 15, DIST_SPACING) %>%
-  roll_median(MIN_TIME_OFF, 15, TIME_SPACING) %>%
-  roll_median(DIST_OFF, 15, DIST_LF) %>%
+  roll_median(MIN_DIST_OFF, whs, DIST_SPACING) %>%
+  roll_median(MIN_TIME_OFF, whs, TIME_SPACING) %>%
+  roll_median(DIST_OFF, whs, DIST_LF) %>%
   mutate(GID = cur_group_id()) %>% select(GID, everything())
 
-rqq %>% filter(GID <=20) %>%
+
+# plot first 20 trajs
+# step <= 3000, seq 1:1200, above every 10 secs
+# ggsave("./figures/EGLL-spacing-deviation-sm45-30.png", dpi = 320, width = 8, height = 6)
+# removed outliers: GID %in% c(1:4,6:26, 28:30), STEP <= 3000
+
+rqq %>% filter(GID %in% c(1:4,6:26, 28:30), STEP <= 3000) %>%
   ggplot() +
   geom_line(aes(x = STEP, y = DIST_SPACING, group = GID, colour = GID)) +
+  scale_colour_continuous(guide = FALSE) +
+    theme_minimal() 
+## ggsave("./figures/EGLL-spacing-deviation-sm15-20.png", dpi = 320, width = 8, height = 6)
+```
+
+
+```{r}
+set.seed(666)
+pick <- sample(rqq$GID, size = 50)
+
+rqq %>% filter(GID %in% pick) %>%
+  ggplot() +
+  geom_line(aes(x = STEP, y = TIME_SPACING, group = GID, colour = GID)) +
     theme_minimal()
 ## ggsave("./figures/EGLL-spacing-deviation-sm15-20.png", dpi = 320, width = 8, height = 6)
 ```
 
 
 ```{r}
-#tmp <- rqq %>% filter(GID <= 20, STEP %in% seq(from = 1, to = 3600, by = 5))
-tmp <- rqq %>% filter(GID <= 20) %>% mutate(STEP = STEP %/% 5)
+tmp <- rqq %>% filter(GID <= 20, STEP %in% seq(from = 1, to = 3600, by = 3))
 
 tmp %>% filter(STEP <= 300) %>%
   ggplot() +
-    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+    geom_boxplot(aes(x = STEP, y = TIME_SPACING, group = STEP))
 ```
 
 ```{r}
-tmp %>% filter(STEP >= 300, 600 <= STEP) %>%
+tmp %>% filter(STEP >= 300, STEP <= 600) %>%
   ggplot() +
-    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+    geom_boxplot(aes(x = STEP, y = TIME_SPACING, group = STEP))
 ```
 
 ```{r}
-tmp %>% filter(STEP >= 600, 900 <= STEP ) %>%
+tmp %>% filter(STEP >= 600, STEP <= 900) %>%
   ggplot() +
-    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+    geom_boxplot(aes(x = STEP, y = TIME_SPACING, group = STEP))
 ``` 
 
 ```{r}
 tmp %>% filter(STEP <= 3000, STEP >= 2700) %>%
   ggplot() +
-    geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
+
+      geom_boxplot(aes(x = STEP, y = DIST_SPACING, group = STEP))
 ```
+
+MOVING TOWARDS PERCENTILES
+
+```{r}
+pct <- spd %>% drop_na() %>% 
+  group_by(STEP) %>% 
+  summarise(
+    #---------- spacing deviation distance - percentiles
+     P5_DIST  = quantile(MIN_DIST_OFF, probs = .05)
+    ,P50_DIST = quantile(MIN_DIST_OFF, probs = .50)
+    ,P95_DIST = quantile(MIN_DIST_OFF, probs = .95)
+    
+    #---------- spacing deviation time - percentiles
+    ,P5_TIME  = quantile(MIN_TIME_OFF, probs = .05)
+    ,P50_TIME = quantile(MIN_TIME_OFF, probs = .50)
+    ,P95_TIME = quantile(MIN_TIME_OFF, probs = .95)
+    ) 
+
+
+pct %>% 
+  ggplot() + 
+    geom_line(aes(x = STEP, y = P5_DIST)) +
+    geom_line(aes(x = STEP, y = P50_DIST), colour = "green") +
+    geom_line(aes(x = STEP, y = P95_DIST), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - distance"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [km]")
+```
+
+```{r}
+pct %>% 
+  ggplot() + 
+    geom_line(aes(x = STEP, y = P5_TIME)) +
+    geom_line(aes(x = STEP, y = P50_TIME), colour = "green") +
+    geom_line(aes(x = STEP, y = P95_TIME), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - time"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [s]")
+```
+
+SMOOTHED RESULTS
+
+```{r}
+pct %>% 
+  filter(STEP %in% rq_smooth) %>% #filter(STEP <= 3600) %>%
+  mutate(across(contains("_DIST"), .fns = ~ zoo::rollmedian(., k = 21, fill = TRUE)) / 1.852) %>% 
+  ggplot() + 
+    geom_point(aes(x = STEP, y = P5_DIST)) +
+    geom_point(aes(x = STEP, y = P50_DIST), colour = "green") +
+    geom_point(aes(x = STEP, y = P95_DIST), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - distance"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [NM]")
+## ggsave("./figures/EGLL-spacing-deviation-pct.png-dist.png", dpi = 320, width = 8, height = 6)
+```
+
+
+
+CRUNCHING 2020 and 2021 to have multi-year comparison
+
+load study index function from above
+list files and pick year
+```{r}
+apt <- "EGLL"
+# apt <- "EHAM"
+# apt <- "LSZH"
+# fns <- list.files(path = paste0("./data-raw/",apt,"/"), pattern = paste0(apt,".*\\.feather"), full.names = TRUE)
+
+fns <- list.files(path = "./data-raw/", full.names = TRUE)
+
+yr   <- 2020 
+arrs <- study_index( .apt = apt
+                    , .fn = fns[grepl(pattern = paste0("._", yr, "-"), fns)]
+                    , .debug = TRUE, .write_bins = FALSE) 
+
+ds <- arrs[[1]]
+bins <- arrs[[2]]
+
+inter_arrival <- ds %>% 
+  filter(TYPE == "THR") %>% 
+  group_by(RWY) %>%
+  arrange(TIME) %>%
+  mutate( SEQ_ID  = row_number()
+         ,T_TRAIL = lead(TIME) - TIME )
+
+# general overview plot of inter-arrival spacing
+# inter_arrival %>%
+#   ggplot() +
+#   geom_step(aes(x = TIME, y = T_TRAIL)) +
+#   scale_x_datetime(labels = scales::date_format("%H:%M")) +
+#   facet_wrap(. ~RWY) +
+#   labs( title = "EGLL - inter-arrival sequence"
+#        ,subtitle = "01-03-2020, time in UTC" 
+#        ,x = NULL, y = "time trailing [s]") +
+#   theme_minimal()
+
+# ------------- boxplot --------------------------------
+# inter_arrival %>% 
+#   filter(T_TRAIL <= 300) %>% 
+#   ggplot() + 
+#     geom_boxplot(aes(x = RWY, y = T_TRAIL)) + 
+#     scale_y_continuous(limits = c(0,300)) + 
+#     labs(    title = "EGLL - inter-arrival sequence spread"
+#         , subtitle = "01-03-2020, time trailing <= 300 sec"
+#         , x = "arrival runway", y = "time trailing [s]"
+#         ) + 
+#     theme_minimal()
+
+inter_arrival %>%
+   filter(T_TRAIL <= 300) %>% 
+  ggplot() +
+  geom_step(aes(x = TIME, y = T_TRAIL)) +
+  scale_x_datetime(labels = scales::date_format("%H:%M")) +
+  facet_wrap(. ~RWY) +
+  labs( title = "EGLL - inter-arrival sequence"
+       ,subtitle = "01-03-2020, time in UTC"
+       ,x = NULL, y = "time trailing [s]") +
+  theme_minimal()
+
+cut_off <- 240   
+couples <- inter_arrival %>%
+  mutate(SEQ_UID_F = case_when(T_TRAIL <= cut_off ~ lead(UID)
+                              ,TRUE ~ as.character(NA))) %>%
+  #--- remove flights with only remote follower
+  filter( !is.na(SEQ_UID_F) ) %>%
+  ungroup() %>%
+  select(UID, SEQ_UID_F, everything()) 
+
+
+# LOAD HELPER FUNCTIONS ... c.f. above
+
+# --------------loop over all couples ----------------------------
+
+spd <- couples %>% select(UID, SEQ_UID_F, T_TRAIL, everything()) %>%
+  pmap_dfr(.f = ~ calc_pairwise_spacing(..1, ..2, ..3, ds))
+```
+
+spd %>% write_csv(file = "./data-raw/xstuff/spd-EGLL-02.csv.gz")
