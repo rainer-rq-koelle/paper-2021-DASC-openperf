@@ -8,7 +8,11 @@ bibliography: TN-arrmgt.bib
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(
+   echo = FALSE
+  ,fig.align = "center" 
+  ,out.width = "80%"
+  )
 ```
 
 <!-- --------------------------------------------------------------------------
@@ -17,18 +21,118 @@ Outputs:
 * (this) Technical Note
 -------------------------------------------------------------------------   -->
 
+# Executive Summary {-}
+
+```
+To be developed based on PRC decision to publish this Technical Note.
+```
 
 # Introduction
 
 ## Overview
 
+Despite the unprecedented reduction in air transport due to the global, regional, and local travel constraints for curbing spread of COVID19, there is widespread agreement that to meet the continual growth of air transportation a highly efficient air navigation system is required. 
+This is amplified by the emerging political re-prioritisation of environmental sustainability. 
+
+Driven by these political and strategic priorities and strategic context, air navigation is constantly striving to enhance operational performance by reducing constraints on airspace users.
+The introduction of advanced or novel operational concepts and associated enablers is a topic of regular attention. 
+
+Throughout the last years there has been criticism regarding the level of ambition and achievement in terms of “modernisation” of air navigation.
+Within this context, political decision-makers and airspace users agree that recent system changes have not materialised in the expected performance boost. 
+
+PRC identified the 
+
+Trajectory-based operations are at the heart of the discussion on how to achieve higher levels of operational efficiency, including enabling higher levels of capacity, and ensuring and enhancing safety. 
+
+## Topic Research Approach
+
+This report follows an exploratory research design as presented in Fig. \@ref(fig:exploratory-research).
+
+Performance in general is described as the outcome of the provision of air navigation services as experienced by airspace users.
+The general goal is to establish a "safe, expeditious, and orderly flow or air traffic" [ref ICAO].
+
+The work will flow from a conceptual description of the problem space, considering the current system operations and potential future enhancements. 
+The latter could also provide a basis to assess the observed or expected performance enhancements through the deployment of novel technological enablers. 
+
+On the basis of this system context expected performance benefits are identified. 
+
+The system context and problem space support the identification of use-case candidates.
+
+Based on the formulation of the expected performance benefits ("hypotheses") expressed as ambitions and performance objectives, the use case assessment can then be performed to support the demonstration of the level of performance.
+
+The purpose of this study is to 
+
+* demonstrate the applicability of such an exploratory approach to address system change (performance) assessments;
+* apply this approach to study on-going change for the selected use-case "arrival flow management", and to
+* propose an initial set of measures to monitor performance and evaluate the results.
+
+(ref:exploratory-research) Topic research approach of this study.
+
+```{r exploratory-research, fig.cap="(ref:exploratory-research"}
+knitr::include_graphics("./figures/TN-ExploratoryResearchApproach.png")
+```
+
+
 ## Structure of this report
 
-# Background
+The structure of this report follows the aforementioned exploratory research approach (c.f. Fig. \@ref(exploratory-research)) by
+
+* Establising the context
+  + **Chapter \@ref(background)** provides the background on trajectory-based operations, in particular arrival management operations.  
+  + **Chapter \@ref(conceptualmodel)** supports to develop associated performance objectives.
+  + ...
+  + **Chapter \@ref(futurework)** concludes the report summarising the major findings, conclusions, and future work.
+
+
+# Background {#background}
+
 *	Trajectory management = core concept of operational concepts and future developments, strategic phase through operations
 *	Arrival management = AMAN, extended AMAN
   +	Related concepts: runway pressure, classical vectoring/point merge, …. en-route delay absorption
 *	Previous/existing work
+
+## Trajectory-Based Operations
+
+(ref:TBO) Trajectory-Based Operations - conceptual view
+
+```{r TBO, fig.cap="(ref:TBO"}
+knitr::include_graphics("./figures/TBO-process.png")
+```
+
+Fig. \@ref(fig:TBO) provides a high-level overview of trajectory-based operations. 
+In particular, it highlights the continual refinement of a business or mission initiative.
+This refinement flows from the strategic planning to the actual flight (i.e. tactical phase).
+
+## Arrival Management
+
+(ref:arrivalmgt) Arrival Management context
+
+```{r arrivalmgt, fig.cap="(ref:arrivalmgt)"}
+knitr::include_graphics("./figures/TN-ArrivalManagement.png")
+```
+
+Fig. \@ref(fig:arrivalmgt)
+
+```
+elaborate on related concepts and practices
+```
+
+## Related Work
+
+Trajectory-based operations and arrival management are not a conceptually new topic.
+There exists a wide body of literature on TBO and arrival management.
+
+```
+provide a high-level literature review, key topics/streams, and why this study builds on the following/recent research.
+```
+
+Recent related work
+
+* EUROCONTROL Experimental Center - characterisation of arrival flow 
+* LiU Technical University Linköping - ditto including SID
+
+This study builds on the related work and refines the concepts within the performance monitoring domain.
+
 
 <!-- -------------------- move to where it belongs & rewrite --------------- -->
 
@@ -67,7 +171,7 @@ d_error = d_trail - d_lead - d_spacing
 
 <!-- --------------------- END TO BE MOVED AND REWRITTEN ------------------- -->
 
-# Conceptual Model (could be section of Method)
+# Conceptual Model (could be section of Method) {#conceptualmodel}
 
 *	“performance measurement” – performance objectives
 *	Geo-spatial ASMA concept  ~ efficiency := delta (actual travel time/distance – reference travel/distance)
@@ -206,7 +310,7 @@ Fig, \@ref(fig:EGLL-spacedev) shows an example of the development of the spacing
 
 <!-- ---------------- FUTURE WORK ------------------------------------------ -->
 
-# Future Work
+# Future Work {#futurework}
 
 ## Methodology
 

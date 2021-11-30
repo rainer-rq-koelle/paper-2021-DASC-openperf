@@ -656,7 +656,8 @@ tmp %>% filter(STEP <= 3000, STEP >= 2700) %>%
 MOVING TOWARDS PERCENTILES
 
 ```{r}
-pct <- spd %>% drop_na() %>% 
+calc_spacedev_pct <- function(.spd){
+ df <- .spd %>% drop_na() %>% 
   group_by(STEP) %>% 
   summarise(
     #---------- spacing deviation distance - percentiles
@@ -669,7 +670,10 @@ pct <- spd %>% drop_na() %>%
     ,P50_TIME = quantile(MIN_TIME_OFF, probs = .50)
     ,P95_TIME = quantile(MIN_TIME_OFF, probs = .95)
     ) 
+return(df)
+}
 
+pct <- calc_spacedev_pct(spd)
 
 pct %>% 
   ggplot() + 
@@ -726,6 +730,10 @@ apt <- "EGLL"
 fns <- list.files(path = "./data-raw/", full.names = TRUE)
 
 yr   <- 2020 
+
+
+prc_crunch <- function(apt, yr){ #----------------- PRC CRUNCH PRC CRUNCH ------
+
 arrs <- study_index( .apt = apt
                     , .fn = fns[grepl(pattern = paste0("._", yr, "-"), fns)]
                     , .debug = TRUE, .write_bins = FALSE) 
@@ -738,7 +746,7 @@ inter_arrival <- ds %>%
   group_by(RWY) %>%
   arrange(TIME) %>%
   mutate( SEQ_ID  = row_number()
-         ,T_TRAIL = lead(TIME) - TIME )
+         ,T_TRAIL = difftime(lead(TIME), TIME, units = "sec") )
 
 # general overview plot of inter-arrival spacing
 # inter_arrival %>%
@@ -763,7 +771,7 @@ inter_arrival <- ds %>%
 #         ) + 
 #     theme_minimal()
 
-inter_arrival %>%
+ia_plot <- inter_arrival %>%
    filter(T_TRAIL <= 300) %>% 
   ggplot() +
   geom_step(aes(x = TIME, y = T_TRAIL)) +
@@ -783,13 +791,119 @@ couples <- inter_arrival %>%
   ungroup() %>%
   select(UID, SEQ_UID_F, everything()) 
 
+out <- list(couples, ds, bins, inter_arrival, ia_plot)
+}
 
-# LOAD HELPER FUNCTIONS ... c.f. above
+# LOAD HELPER FUNCTIONS ... c.f. above-above
 
 # --------------loop over all couples ----------------------------
+##
+#
+fb <- prc_crunch("EGLL", 2020)
 
-spd <- couples %>% select(UID, SEQ_UID_F, T_TRAIL, everything()) %>%
-  pmap_dfr(.f = ~ calc_pairwise_spacing(..1, ..2, ..3, ds))
+spd <- fb[[1]] %>% select(UID, SEQ_UID_F, T_TRAIL, everything()) %>%
+  pmap_dfr(.f = ~ calc_pairwise_spacing(..1, ..2, ..3, fb[[2]], fb[[3]]))
+
+## save when breaking - check file name
+## spd %>% write_csv(file = "./data-raw/xstuff/spd-EGLL-02.csv.gz")
+## read in again: spd <- read_csv("data-raw/xstuff/spd-EGLL-02.csv.gz")
+
+
+## --------------- PLOT SOME EXAMPLES -------------------------------
+# smoothing rolling window halfspan 
+whs <- 45
+rq_smooth <- c(seq(1,599,1), seq(600, 1199, 5), seq(from = 1200, to = 4000, by = 10))
+
+rqq <- spd %>%
+  filter(STEP %in% rq_smooth) %>%
+  group_by(UID, SEQ_UID, RWY) %>% 
+  roll_median(MIN_DIST_OFF, whs, DIST_SPACING) %>%
+  roll_median(MIN_TIME_OFF, whs, TIME_SPACING) %>%
+  roll_median(DIST_OFF, whs, DIST_LF) %>%
+  mutate(GID = cur_group_id()) %>% select(GID, everything())
+
+rqq %>% filter(GID %in% c(1:600), STEP <= 3000) %>%
+  ggplot() +
+  geom_line(aes(x = STEP, y = DIST_SPACING, group = GID, colour = GID)) +
+  scale_colour_continuous(guide = FALSE) +
+    theme_minimal() 
+## ggsave("./figures/EGLL-spacing-deviation-sm15-20.png", dpi = 320, width = 8, height = 6)
 ```
 
 spd %>% write_csv(file = "./data-raw/xstuff/spd-EGLL-02.csv.gz")
+
+
+```{r}
+pct <- calc_spacedev_pct(spd)
+
+p1 <- pct %>% 
+  filter(STEP %in% rq_smooth) %>% #filter(STEP <= 3600) %>%
+  mutate(across(contains("_DIST"), .fns = ~ zoo::rollmedian(., k = 21, fill = TRUE)) / 1.852) %>% 
+  ggplot() + 
+    geom_line(aes(x = STEP, y = P5_DIST)) +
+    geom_line(aes(x = STEP, y = P50_DIST), colour = "green") +
+    geom_line(aes(x = STEP, y = P95_DIST), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - distance"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [NM]")
+
+p2 <- pct %>% 
+  filter(STEP %in% rq_smooth) %>% # filter(STEP <= 3600) %>%
+  mutate(across(contains("_TIME"), .fns = ~ zoo::rollmedian(., k = 21, fill = TRUE))) %>% 
+  ggplot() + 
+    geom_line(aes(x = STEP, y = P5_TIME)) +
+    geom_line(aes(x = STEP, y = P50_TIME), colour = "green") +
+    geom_line(aes(x = STEP, y = P95_TIME), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - time"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [s]")
+
+#library(patchwork)
+p1 
+p2
+```
+
+Run EXERCISE FOR 2021
+
+```{r}
+prc <- prc_crunch("EGLL", 2021)
+
+spd <- prc[[1]] %>% select(UID, SEQ_UID_F, T_TRAIL, everything()) %>%
+  pmap_dfr(.f = ~ calc_pairwise_spacing(..1, ..2, ..3, prc[[2]], prc[[3]]))
+
+pct <- calc_spacedev_pct(spd)
+
+p1 <- pct %>% 
+  filter(STEP %in% rq_smooth) %>% #filter(STEP <= 3600) %>%
+  mutate(across(contains("_DIST"), .fns = ~ zoo::rollmedian(., k = 21, fill = TRUE)) / 1.852) %>% 
+  ggplot() + 
+    geom_line(aes(x = STEP, y = P5_DIST)) +
+    geom_line(aes(x = STEP, y = P50_DIST), colour = "green") +
+    geom_line(aes(x = STEP, y = P95_DIST), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - distance"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [NM]") +
+  ylim(c(-150,150))
+
+p2 <- pct %>% 
+  filter(STEP %in% rq_smooth) %>% # filter(STEP <= 3600) %>%
+  mutate(across(contains("_TIME"), .fns = ~ zoo::rollmedian(., k = 21, fill = TRUE))) %>% 
+  ggplot() + 
+    geom_line(aes(x = STEP, y = P5_TIME)) +
+    geom_line(aes(x = STEP, y = P50_TIME), colour = "green") +
+    geom_line(aes(x = STEP, y = P95_TIME), colour = "blue") +
+  theme_minimal() +
+  labs(title = "Spacing deviation - time"
+      ,subtitle = "5th/50th/95th percentile"
+    ,x = "time horizon", y = "spacing deviation [s]") +
+  ylim(c(-2000,2000))
+
+#library(patchwork)
+p1 
+p2
+
+```
+
